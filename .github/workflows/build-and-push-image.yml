@@ -13,6 +13,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ghcr.io/${{ github.repository }}
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
 
@@ -34,8 +40,7 @@ jobs:
         with:
           target: deploy
           push: true
-          tags: |
-            ghcr.io/${{ github.repository }}:latest
+          tags: ${{ steps.meta.outputs.tags }}
           platforms: linux/amd64,linux/arm64
           cache-from: type=gha,scope=${{ github.workflow }}
           cache-to: type=gha,mode=max,scope=${{ github.workflow }}
