@@ -2,8 +2,8 @@ import { Logger } from 'pino';
 import path from 'path';
 import { ResetMode, simpleGit, SimpleGit } from 'simple-git';
 import fs from 'fs-extra';
+import os from 'os';
 import { IProduct, Product } from '../schema/product';
-import { configDir } from '../common/config';
 
 export interface ProductGitArchiveProps {
   logger: Logger;
@@ -17,7 +17,7 @@ export interface ProductGitArchiveProps {
 export default class ProductGitArchive {
   private L: Logger;
 
-  private repoDir = path.join(configDir, 'repos', 'product-db-archive');
+  private repoDir = path.join(os.tmpdir(), 'ubisoft-db-scraper', 'product-db-archive');
 
   private git: SimpleGit;
 
