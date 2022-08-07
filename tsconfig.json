@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    // see https://github.com/tsconfig/bases/blob/main/bases/node16.json
+    "lib": [
+      "es2021"
+    ],
+    "module": "commonjs",
+    "target": "es2021",
+    "moduleResolution": "node",
+    "outDir": "./dist", /* Redirect output structure to the directory. */
+    "esModuleInterop": true,
+    "strict": true,
+    "inlineSourceMap": true, // Inline sourcemaps for jest debugging
+    "useUnknownInCatchVariables": false,
+    "declaration": true,
+    "forceConsistentCasingInFileNames": true,
+    "typeRoots": [
+      "node_modules/@types"
+    ],
+    "allowJs": true,
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+  ]
+}
