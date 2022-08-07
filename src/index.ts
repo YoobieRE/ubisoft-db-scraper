@@ -9,7 +9,7 @@ import ProductGitArchive from './reports/git';
 const maxProductId = 10000;
 
 async function main() {
-  const mongooseConnection = await mongoose.connect('mongodb://localhost:27017/ubi', {
+  const mongooseConnection = await mongoose.connect(config.dbConnectionString, {
     autoIndex: false,
   });
 
@@ -38,4 +38,4 @@ async function main() {
   await mongooseConnection.disconnect();
 }
 
-main();
+main().catch((err) => logger.error(err));
