@@ -26,7 +26,7 @@
     "dmx",
     "demux",
     "database",
-    "scaper"
+    "scraper"
   ],
   "license": "MIT",
   "engines": {
@@ -43,6 +43,7 @@
     "mongoose": "^6.5.1",
     "otpauth": "^8.0.1",
     "pino": "^8.4.0",
+    "simple-git": "^3.11.0",
     "ubisoft-demux": "^1.10690.4",
     "yaml": "^2.1.1"
   },

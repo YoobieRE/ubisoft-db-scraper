@@ -8,8 +8,8 @@ import {
 import { DemuxConnection } from 'ubisoft-demux/dist/src/demux-connection';
 import * as otp from 'otpauth';
 import { Logger } from 'pino';
-import { readRememberMeTicket, writeRememberMeTicket } from '../cache';
-import { Account } from '../config';
+import { readRememberMeTicket, writeRememberMeTicket } from '../common/cache';
+import { Account } from '../common/config';
 
 export interface DemuxUnit {
   demux: UbisoftDemux;

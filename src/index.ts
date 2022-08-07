@@ -1,9 +1,9 @@
 import 'dotenv/config';
 import mongoose from 'mongoose';
-import { config } from './config';
+import { config } from './common/config';
 import DemuxPool from './demux/pool';
 import DbScraper from './demux/db-scraper';
-import logger from './logger';
+import logger from './common/logger';
 
 const maxProductId = 10000;
 

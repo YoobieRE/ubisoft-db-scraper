@@ -1,11 +1,11 @@
-import { game_configuration } from 'ubisoft-demux';
+import { game_configuration, ownership_service } from 'ubisoft-demux';
 import yaml from 'yaml';
 import { Document } from 'mongoose';
 import deepEqual from 'fast-deep-equal';
 import { Logger } from 'pino';
 import { IProduct, Product } from '../schema/product';
 import { ProductRevision } from '../schema/product-revision';
-import { chunkArray } from '../util';
+import { chunkArray } from '../common/util';
 import { OwnershipUnit } from './pool';
 
 export interface DbScraperProps {
@@ -73,6 +73,19 @@ export default class DbScraper {
           // TODO: updateManifestHistory function
           await Promise.all(
             newManifests.map(async (newManifest) => {
+              if (
+                newManifest.result !==
+                ownership_service.DeprecatedGetLatestManifestsRsp_Manifest_Result.Result_Success
+              ) {
+                // I couldn't find any non-success manifest results that had a configuration, so they're not worth storing
+                // If they do get a successful result in the future, they will be picked up
+                this.L.trace(
+                  { productId: newManifest.productId, result: newManifest.result },
+                  'Product ID does not exist'
+                );
+                return;
+              }
+
               const currentProduct = currentProductsMap.get(newManifest.productId);
               if (!currentProduct || currentProduct.manifest !== newManifest.manifest) {
                 await this.updateProduct(

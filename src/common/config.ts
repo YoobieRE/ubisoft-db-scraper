@@ -9,6 +9,7 @@ export interface Account {
 export interface ConfigFile {
   accounts: Account[];
   logLevel?: string;
+  githubToken: string;
 }
 
 export const config: ConfigFile = fs.readJSONSync('config.json');
