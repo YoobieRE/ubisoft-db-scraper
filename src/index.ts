@@ -4,6 +4,7 @@ import { config } from './common/config';
 import DemuxPool from './demux/pool';
 import DbScraper from './demux/db-scraper';
 import logger from './common/logger';
+import ProductGitArchive from './reports/git';
 
 const maxProductId = 10000;
 
@@ -24,6 +25,16 @@ async function main() {
   await scraper.scrapeManifests();
 
   await demuxPool.destroy();
+
+  const productArchive = new ProductGitArchive({
+    logger,
+    remote: config.productArchiveRemote,
+    token: config.githubToken,
+    userName: config.gitUser,
+    userEmail: config.gitEmail,
+  });
+  await productArchive.archive();
+
   await mongooseConnection.disconnect();
 }
 
