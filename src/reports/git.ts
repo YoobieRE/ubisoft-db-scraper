@@ -3,6 +3,7 @@ import path from 'path';
 import { ResetMode, simpleGit, SimpleGit } from 'simple-git';
 import fs from 'fs-extra';
 import { IProduct, Product } from '../schema/product';
+import { configDir } from '../common/config';
 
 export interface ProductGitArchiveProps {
   logger: Logger;
@@ -16,7 +17,7 @@ export interface ProductGitArchiveProps {
 export default class ProductGitArchive {
   private L: Logger;
 
-  private repoDir = path.join('./cache', 'repos', 'product-db-archive');
+  private repoDir = path.join(configDir, 'repos', 'product-db-archive');
 
   private git: SimpleGit;
 
@@ -61,9 +62,15 @@ export default class ProductGitArchive {
 
     // commit changes
     await this.git.add('./*');
-    await this.git.commit('Database update');
-    await this.git.push();
-    this.L.info(`Committed changes to ${this.remote}`);
+    const status = await this.git.status();
+    if (status.isClean()) {
+      this.L.info('No product changes to commit');
+    } else {
+      this.L.debug('Committing product changes');
+      await this.git.commit('Database update');
+      await this.git.push();
+      this.L.info(`Committed changes to ${this.remote}`);
+    }
   }
 
   private async dumpProducts(): Promise<IProduct[]> {

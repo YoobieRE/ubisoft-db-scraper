@@ -1,4 +1,5 @@
 import fs from 'fs-extra';
+import path from 'path';
 
 export interface Account {
   email: string;
@@ -15,4 +16,6 @@ export interface ConfigFile {
   productArchiveRemote: string;
 }
 
-export const config: ConfigFile = fs.readJSONSync('config.json');
+export const configDir = process.env.CONFIG_DIR || './config';
+
+export const config: ConfigFile = fs.readJSONSync(path.join(configDir, 'config.json'));

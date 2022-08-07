@@ -33,19 +33,5 @@
             "outputCapture": "std",
             "console": "integratedTerminal"
         },
-        {
-            "type": "node",
-            "request": "launch",
-            "name": "Debug Git",
-            "runtimeArgs": [
-                "-r",
-                "ts-node/register"
-            ],
-            "args": [
-                "${workspaceFolder}/src/triggers/git.ts"
-            ],
-            "outputCapture": "std",
-            "console": "integratedTerminal"
-        },
     ]
 }

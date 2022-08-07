@@ -12,7 +12,6 @@
     "strict": true,
     "inlineSourceMap": true, // Inline sourcemaps for jest debugging
     "useUnknownInCatchVariables": false,
-    "declaration": true,
     "forceConsistentCasingInFileNames": true,
     "typeRoots": [
       "node_modules/@types"
