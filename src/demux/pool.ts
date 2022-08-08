@@ -93,7 +93,7 @@ export default class DemuxPool {
 
         if (!authResponse.authenticateRsp?.success) throw new Error('Not able to authenticate');
         this.L.info({ email }, 'Successfully logged in and authenticated');
-        const limiter = new Bottleneck({ concurrency: 1, minTime: 100 });
+        const limiter = new Bottleneck({ concurrency: 1, minTime: 100, id: email });
         return {
           demux,
           limiter,

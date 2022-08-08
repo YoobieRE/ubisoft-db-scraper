@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import mongoose from 'mongoose';
+import schedule from 'node-schedule';
 import { config } from './common/config';
 import DemuxPool from './demux/pool';
 import DbScraper from './demux/db-scraper';
@@ -8,34 +9,61 @@ import ProductGitArchive from './reports/git';
 
 const maxProductId = 10000;
 
-async function main() {
-  const mongooseConnection = await mongoose.connect(config.dbConnectionString, {
-    autoIndex: false,
-  });
+let locked = false;
 
-  const demuxPool = new DemuxPool({ accounts: config.accounts, logger });
-  const ownershipPool = await demuxPool.getOwnershipPool();
+async function scrape(target: 'config' | 'manifest'): Promise<void> {
+  if (locked) return;
+  locked = true;
 
-  const scraper = new DbScraper({
-    ownershipPool,
-    logger,
-    maxProductId,
-  });
+  logger.info(`Beginning scrape for target: ${target}`);
+  try {
+    const mongooseConnection = await mongoose.connect(config.dbConnectionString, {
+      autoIndex: false,
+    });
 
-  await scraper.scrapeManifests();
+    const demuxPool = new DemuxPool({ accounts: config.accounts, logger });
+    const ownershipPool = await demuxPool.getOwnershipPool();
 
-  await demuxPool.destroy();
+    const scraper = new DbScraper({
+      ownershipPool,
+      logger,
+      maxProductId,
+    });
 
-  const productArchive = new ProductGitArchive({
-    logger,
-    remote: config.productArchiveRemote,
-    token: config.githubToken,
-    userName: config.gitUser,
-    userEmail: config.gitEmail,
-  });
-  await productArchive.archive();
+    try {
+      if (target === 'config') {
+        await scraper.scrapeConfigurations();
+      } else {
+        await scraper.scrapeManifests();
+      }
+    } catch (err) {
+      logger.error(err);
+    }
 
-  await mongooseConnection.disconnect();
+    await demuxPool.destroy();
+
+    const productArchive = new ProductGitArchive({
+      logger,
+      remote: config.productArchiveRemote,
+      token: config.githubToken,
+      userName: config.gitUser,
+      userEmail: config.gitEmail,
+    });
+    await productArchive.archive();
+
+    await mongooseConnection.disconnect();
+  } catch (err) {
+    logger.error(err);
+  }
+  locked = false;
 }
 
-main().catch((err) => logger.error(err));
+logger.debug({ config }, 'Found config');
+
+if (config.noSchedule) {
+  scrape('manifest');
+} else {
+  logger.info('Started, scheduling scraping jobs');
+  schedule.scheduleJob('1 * * * *', () => scrape('manifest'));
+  schedule.scheduleJob('0 0 * * *', () => scrape('config'));
+}

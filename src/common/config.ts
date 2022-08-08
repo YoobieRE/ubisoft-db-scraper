@@ -15,6 +15,7 @@ export interface ConfigFile {
   gitEmail: string;
   productArchiveRemote: string;
   dbConnectionString: string;
+  noSchedule: boolean;
 }
 
 export const configDir = process.env.CONFIG_DIR || './config';
