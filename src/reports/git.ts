@@ -68,8 +68,9 @@ export default class ProductGitArchive {
     if (status.isClean()) {
       this.L.info('No product changes to commit');
     } else {
-      this.L.debug('Committing product changes');
-      await this.git.commit('Database update');
+      const { insertions, deletions } = await this.git.diffSummary('--staged');
+      this.L.debug({ insertions, deletions }, 'Committing product changes');
+      await this.git.commit(`Product update\n${insertions} added, ${deletions} deleted`);
       if (!config.noPush) {
         await this.git.push();
         this.L.info(`Pushed changes to ${this.remote}`);
@@ -84,6 +85,7 @@ export default class ProductGitArchive {
       { sort: { _id: 1 } }
     );
     this.L.info(`Dumped ${products.length} products from the database`);
-    return products.map((p) => p.toJSON());
+    const jsonProducts = products.map((p) => p.toJSON());
+    return jsonProducts;
   }
 }
