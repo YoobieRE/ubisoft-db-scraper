@@ -20,7 +20,11 @@ async function scrape(target: 'config' | 'manifest'): Promise<void> {
       autoIndex: false,
     });
 
-    const demuxPool = new DemuxPool({ accounts: config.accounts, logger });
+    const demuxPool = new DemuxPool({
+      accounts: config.accounts,
+      logger,
+      throttleTime: config.throttleTime,
+    });
     const ownershipPool = await demuxPool.getOwnershipPool();
 
     const scraper = new DbScraper({

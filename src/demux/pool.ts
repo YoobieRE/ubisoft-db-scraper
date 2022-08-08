@@ -23,6 +23,7 @@ export interface OwnershipUnit extends DemuxUnit {
 export interface DemuxPoolProps {
   accounts: Account[];
   logger: Logger;
+  throttleTime?: number;
 }
 
 export default class DemuxPool {
@@ -32,9 +33,12 @@ export default class DemuxPool {
 
   private L: Logger;
 
+  private throttleTime = 100;
+
   constructor(props: DemuxPoolProps) {
     this.accounts = props.accounts;
     this.L = props.logger;
+    this.throttleTime = props.throttleTime ?? this.throttleTime;
   }
 
   private async getDemuxPool(): Promise<DemuxUnit[]> {
@@ -93,7 +97,7 @@ export default class DemuxPool {
 
         if (!authResponse.authenticateRsp?.success) throw new Error('Not able to authenticate');
         this.L.info({ email }, 'Successfully logged in and authenticated');
-        const limiter = new Bottleneck({ concurrency: 1, minTime: 100, id: email });
+        const limiter = new Bottleneck({ concurrency: 1, minTime: this.throttleTime, id: email });
         return {
           demux,
           limiter,

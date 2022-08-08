@@ -18,6 +18,7 @@ export interface ConfigFile {
   noSchedule?: boolean;
   maxProductId?: number;
   noPush?: boolean;
+  throttleTime?: number;
 }
 
 export const configDir = process.env.CONFIG_DIR || './config';
