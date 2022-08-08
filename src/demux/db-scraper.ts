@@ -156,9 +156,9 @@ export default class DbScraper {
         ) {
           // If there is a change in the document
           this.L.info({ productId }, 'A change was detected. Updating the product');
-          await ProductRevision.create(currentProduct); // Save the old document
+          await ProductRevision.create(currentProduct.toObject()); // Save the old document
           // Update the old document
-          await currentProduct.update({
+          await currentProduct.updateOne({
             manifest: newManifest, // undefined does not unset property in MongoDB
             configuration: configParsed,
           });
