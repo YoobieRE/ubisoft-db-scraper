@@ -1,3 +1,4 @@
+import 'source-map-support/register';
 import 'dotenv/config';
 import mongoose from 'mongoose';
 import schedule from 'node-schedule';

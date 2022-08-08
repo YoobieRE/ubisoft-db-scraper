@@ -77,7 +77,11 @@ export default class ProductGitArchive {
   }
 
   private async dumpProducts(): Promise<IProduct[]> {
-    const products = await Product.find({}, undefined, { sort: { _id: 1 } });
+    const products = await Product.find(
+      {},
+      { _id: 0, createdAt: 0, updatedAt: 0, __v: 0 },
+      { sort: { _id: 1 } }
+    );
     this.L.info(`Dumped ${products.length} products from the database`);
     return products.map((p) => p.toJSON());
   }

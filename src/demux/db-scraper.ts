@@ -106,8 +106,10 @@ export default class DbScraper {
     currentProduct?: (Document<unknown, unknown, IProduct> & IProduct) | null,
     newManifest?: string
   ): Promise<void> {
-    if (productId % 50 === 0) this.L.debug({ productId, newManifest }, 'Updating product');
-    this.L.trace({ productId, newManifest }, 'Updating product');
+    if (productId % 50 === 0) {
+      this.L.debug({ productId, newManifest }, 'Getting latest product config');
+    }
+    this.L.trace({ productId, newManifest }, 'Getting latest product config');
     const { limiter, ownershipConnection } =
       this.ownershipPool[productId % this.ownershipPool.length];
     return limiter.schedule(async () => {
@@ -142,11 +144,14 @@ export default class DbScraper {
         if (!currentProduct) {
           // If no document exists create a new one
           this.L.debug({ productId }, 'No current product exists, creating a one');
-          await Product.create({
+          const newProduct = new Product({
             _id: productId,
+            productId,
             manifest: newManifest,
             configuration: configParsed,
           });
+          this.L.trace({ newProduct }, 'inserting new product');
+          await newProduct.save();
           return;
         }
 
@@ -156,7 +161,7 @@ export default class DbScraper {
         ) {
           // If there is a change in the document
           this.L.info({ productId }, 'A change was detected. Updating the product');
-          await ProductRevision.create(currentProduct.toObject()); // Save the old document
+          await ProductRevision.create({ ...currentProduct.toObject(), _id: undefined }); // Save the old document
           // Update the old document
           await currentProduct.updateOne({
             manifest: newManifest, // undefined does not unset property in MongoDB
