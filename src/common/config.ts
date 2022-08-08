@@ -16,6 +16,7 @@ export interface ConfigFile {
   productArchiveRemote: string;
   dbConnectionString: string;
   noSchedule: boolean;
+  maxProductId: number;
 }
 
 export const configDir = process.env.CONFIG_DIR || './config';

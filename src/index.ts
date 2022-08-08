@@ -7,8 +7,6 @@ import DbScraper from './demux/db-scraper';
 import logger from './common/logger';
 import ProductGitArchive from './reports/git';
 
-const maxProductId = 10000;
-
 let locked = false;
 
 async function scrape(target: 'config' | 'manifest'): Promise<void> {
@@ -27,7 +25,7 @@ async function scrape(target: 'config' | 'manifest'): Promise<void> {
     const scraper = new DbScraper({
       ownershipPool,
       logger,
-      maxProductId,
+      maxProductId: config.maxProductId,
     });
 
     try {

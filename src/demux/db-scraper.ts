@@ -18,7 +18,7 @@ export interface DbScraperProps {
 export default class DbScraper {
   private ownershipPool: OwnershipUnit[];
 
-  private maxProductId = 2000;
+  private maxProductId = 10000;
 
   private productIdChunkSize = 1000;
 
