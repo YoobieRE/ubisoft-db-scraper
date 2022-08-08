@@ -15,8 +15,9 @@ export interface ConfigFile {
   gitEmail: string;
   productArchiveRemote: string;
   dbConnectionString: string;
-  noSchedule: boolean;
-  maxProductId: number;
+  noSchedule?: boolean;
+  maxProductId?: number;
+  noPush?: boolean;
 }
 
 export const configDir = process.env.CONFIG_DIR || './config';

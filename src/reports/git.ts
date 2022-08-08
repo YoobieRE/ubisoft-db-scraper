@@ -4,6 +4,7 @@ import { ResetMode, simpleGit, SimpleGit } from 'simple-git';
 import fs from 'fs-extra';
 import os from 'os';
 import { IProduct, Product } from '../schema/product';
+import { config } from '../common/config';
 
 export interface ProductGitArchiveProps {
   logger: Logger;
@@ -69,10 +70,10 @@ export default class ProductGitArchive {
     } else {
       this.L.debug('Committing product changes');
       await this.git.commit('Database update');
-      if (process.env.NODE_ENV === 'produdction') {
+      if (config.noPush) {
         await this.git.push();
+        this.L.info(`Pushed changes to ${this.remote}`);
       }
-      this.L.info(`Committed changes to ${this.remote}`);
     }
   }
 
