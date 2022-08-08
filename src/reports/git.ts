@@ -51,6 +51,7 @@ export default class ProductGitArchive {
     } catch {
       // repo doesn't exist
       await this.git.clone(this.authedRemote, this.repoDir);
+      await this.git.cwd(this.repoDir);
     }
     // ensure config is set
     await this.git.addConfig('user.name', this.userName, undefined, 'local');
