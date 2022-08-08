@@ -69,7 +69,9 @@ export default class ProductGitArchive {
     } else {
       this.L.debug('Committing product changes');
       await this.git.commit('Database update');
-      await this.git.push();
+      if (process.env.NODE_ENV === 'produdction') {
+        await this.git.push();
+      }
       this.L.info(`Committed changes to ${this.remote}`);
     }
   }
