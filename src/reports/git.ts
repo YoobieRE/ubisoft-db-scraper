@@ -70,7 +70,7 @@ export default class ProductGitArchive {
     } else {
       this.L.debug('Committing product changes');
       await this.git.commit('Database update');
-      if (config.noPush) {
+      if (!config.noPush) {
         await this.git.push();
         this.L.info(`Pushed changes to ${this.remote}`);
       }
