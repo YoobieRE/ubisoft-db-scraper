@@ -143,13 +143,13 @@ export default class DbScraper {
     newManifest?: string
   ): Promise<ProductDocument | undefined> {
     const accountIndex = productId % this.ownershipPool.length;
-    if (productId % 50 === 0) {
-      this.L.debug({ productId, newManifest, accountIndex }, 'Getting latest product config');
-    }
-    this.L.trace({ productId, newManifest, accountIndex }, 'Getting latest product config');
     const { limiter, ownershipConnection } = this.ownershipPool[accountIndex];
     // eslint-disable-next-line consistent-return
     return limiter.schedule(async () => {
+      if (productId % 50 === 0) {
+        this.L.debug({ productId, newManifest, accountIndex }, 'Getting latest product config');
+      }
+      this.L.trace({ productId, newManifest, accountIndex }, 'Getting latest product config');
       try {
         this.L.trace({ productId, accountIndex }, 'Getting new config');
         const configResp = await ownershipConnection.request({
@@ -162,6 +162,18 @@ export default class DbScraper {
           },
         });
         const configuration = configResp.response?.getProductConfigRsp?.configuration;
+        if (
+          configResp.response?.getProductConfigRsp?.result !==
+            ownership_service.GetProductConfigRsp_Result.Result_Success &&
+          !currentProduct &&
+          newManifest === undefined
+        ) {
+          this.L.trace(
+            { productId, result: configResp.response?.getProductConfigRsp?.result },
+            'Product ID does not exist'
+          );
+          return undefined;
+        }
         let configParsed: game_configuration.Configuration | string | undefined;
         try {
           configParsed = configuration

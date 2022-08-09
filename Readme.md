@@ -4,5 +4,4 @@ A bot that pulls product configuration and manifest data from the Ubisoft Connec
 
 ## To Do
 
-- Store manifest history in more appropriate DB
 - Store manifest history in community git repo
