@@ -31,6 +31,7 @@ async function scrape(target: 'config' | 'manifest'): Promise<void> {
       ownershipPool,
       logger,
       maxProductId: config.maxProductId,
+      productIdChunkSize: config.productIdChunkSize,
     });
 
     try {
