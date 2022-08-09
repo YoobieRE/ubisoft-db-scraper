@@ -7,6 +7,9 @@ import { IProduct, Product } from '../schema/product';
 import { ProductRevision } from '../schema/product-revision';
 import { chunkArray } from '../common/util';
 import { OwnershipUnit } from './pool';
+import { ManifestVersion } from '../schema/manifest-version';
+
+type ProductDocument = Document<unknown, unknown, IProduct> & IProduct;
 
 export interface DbScraperProps {
   ownershipPool: OwnershipUnit[];
@@ -87,13 +90,45 @@ export default class DbScraper {
                 return;
               }
 
-              const currentProduct = currentProductsMap.get(newManifest.productId);
+              let currentProduct = currentProductsMap.get(newManifest.productId);
               if (!currentProduct || currentProduct.manifest !== newManifest.manifest) {
-                await this.updateProduct(
+                currentProduct = await this.updateProduct(
                   newManifest.productId,
                   currentProduct,
                   newManifest.manifest
                 );
+              }
+
+              // After we have the latest config in the product, we can use its digital
+              // distribution version to update the manifest version.
+              const manifestVersionExists = await ManifestVersion.exists({
+                manifest: newManifest.manifest,
+                productId: newManifest.productId,
+              });
+              if (!manifestVersionExists) {
+                this.L.debug('Manifest does not exist');
+                const digitalDistributionVersion =
+                  typeof currentProduct?.configuration === 'object'
+                    ? currentProduct?.configuration?.root?.digital_distribution?.version
+                    : undefined;
+
+                const newManifestVersion = new ManifestVersion({
+                  productId: newManifest.productId,
+                  manifest: newManifest.manifest,
+                  releaseDate: new Date(),
+                  digitalDistributionVersion,
+                });
+                this.L.info(
+                  {
+                    productId: newManifestVersion.productId,
+                    manifest: newManifestVersion.manifest,
+                    digitalDistributionVersion: newManifestVersion.digitalDistributionVersion,
+                  },
+                  'Inserting new manifest version'
+                );
+                await newManifestVersion.save();
+              } else {
+                this.L.trace('Manifest version already exists');
               }
             })
           );
@@ -104,15 +139,16 @@ export default class DbScraper {
 
   public async updateProduct(
     productId: number,
-    currentProduct?: (Document<unknown, unknown, IProduct> & IProduct) | null,
+    currentProduct?: ProductDocument | null,
     newManifest?: string
-  ): Promise<void> {
+  ): Promise<ProductDocument | undefined> {
     const accountIndex = productId % this.ownershipPool.length;
     if (productId % 50 === 0) {
       this.L.debug({ productId, newManifest, accountIndex }, 'Getting latest product config');
     }
     this.L.trace({ productId, newManifest, accountIndex }, 'Getting latest product config');
     const { limiter, ownershipConnection } = this.ownershipPool[accountIndex];
+    // eslint-disable-next-line consistent-return
     return limiter.schedule(async () => {
       try {
         this.L.trace({ productId, accountIndex }, 'Getting new config');
@@ -153,7 +189,7 @@ export default class DbScraper {
           });
           this.L.trace({ newProduct }, 'inserting new product');
           await newProduct.save();
-          return;
+          return newProduct;
         }
 
         if (
@@ -168,9 +204,11 @@ export default class DbScraper {
             manifest: newManifest, // undefined does not unset property in MongoDB
             configuration: configParsed,
           });
+          return currentProduct;
         }
       } catch (err) {
         this.L.warn(err);
+        return undefined;
       }
     });
   }
