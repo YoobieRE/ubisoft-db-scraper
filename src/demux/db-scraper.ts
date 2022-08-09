@@ -47,91 +47,95 @@ export default class DbScraper {
         const firstProductId = productIdsChunk[0];
         const lastProductId = productIdsChunk[productIdsChunk.length - 1];
 
-        const manifestResp = await limiter.schedule(() => {
-          this.L.info(
-            { accountIndex },
-            `Getting manifests and current products for chunk ${firstProductId}-${lastProductId}`
-          );
-          return ownershipConnection.request({
-            request: {
-              requestId: 1,
-              deprecatedGetLatestManifestsReq: {
-                deprecatedTestConfig: false,
-                deprecatedProductIds: productIdsChunk,
-              },
-            },
-          });
-        });
-        const currentProducts = await Product.find({
-          _id: { $gte: firstProductId, $lte: lastProductId },
-        });
-        const newManifests =
-          manifestResp.response?.deprecatedGetLatestManifestsRsp?.manifests || [];
-        this.L.debug(
-          `Received ${newManifests.length} new manifests and ${currentProducts.length} current products`
-        );
-        const currentProductsMap = new Map(
-          currentProducts.map((product) => [product._id, product])
-        );
-
-        // TODO: updateManifestHistory function
-        await Promise.all(
-          newManifests.map(async (newManifest) => {
-            if (
-              newManifest.result !==
-              ownership_service.DeprecatedGetLatestManifestsRsp_Manifest_Result.Result_Success
-            ) {
-              // I couldn't find any non-success manifest results that had a configuration, so they're not worth storing
-              // If they do get a successful result in the future, they will be picked up
-              this.L.trace(
-                { productId: newManifest.productId, result: newManifest.result },
-                'Product ID does not exist'
-              );
-              return;
-            }
-
-            let currentProduct = currentProductsMap.get(newManifest.productId);
-            if (!currentProduct || currentProduct.manifest !== newManifest.manifest) {
-              currentProduct = await this.updateProduct(
-                newManifest.productId,
-                currentProduct,
-                newManifest.manifest
-              );
-            }
-
-            // After we have the latest config in the product, we can use its digital
-            // distribution version to update the manifest version.
-            const manifestVersionExists = await ManifestVersion.exists({
-              manifest: newManifest.manifest,
-              productId: newManifest.productId,
-            });
-            if (!manifestVersionExists) {
-              this.L.debug('Manifest does not exist');
-              const digitalDistributionVersion =
-                typeof currentProduct?.configuration === 'object'
-                  ? currentProduct?.configuration?.root?.digital_distribution?.version
-                  : undefined;
-
-              const newManifestVersion = new ManifestVersion({
-                productId: newManifest.productId,
-                manifest: newManifest.manifest,
-                releaseDate: new Date(),
-                digitalDistributionVersion,
-              });
-              this.L.info(
-                {
-                  productId: newManifestVersion.productId,
-                  manifest: newManifestVersion.manifest,
-                  digitalDistributionVersion: newManifestVersion.digitalDistributionVersion,
+        try {
+          const manifestResp = await limiter.schedule(() => {
+            this.L.info(
+              { accountIndex },
+              `Getting manifests and current products for chunk ${firstProductId}-${lastProductId}`
+            );
+            return ownershipConnection.request({
+              request: {
+                requestId: 1,
+                deprecatedGetLatestManifestsReq: {
+                  deprecatedTestConfig: false,
+                  deprecatedProductIds: productIdsChunk,
                 },
-                'Inserting new manifest version'
-              );
-              await newManifestVersion.save();
-            } else {
-              this.L.trace('Manifest version already exists');
-            }
-          })
-        );
+              },
+            });
+          });
+          const currentProducts = await Product.find({
+            _id: { $gte: firstProductId, $lte: lastProductId },
+          });
+          const newManifests =
+            manifestResp.response?.deprecatedGetLatestManifestsRsp?.manifests || [];
+          this.L.debug(
+            `Received ${newManifests.length} new manifests and ${currentProducts.length} current products`
+          );
+          const currentProductsMap = new Map(
+            currentProducts.map((product) => [product._id, product])
+          );
+
+          // TODO: updateManifestHistory function
+          await Promise.all(
+            newManifests.map(async (newManifest) => {
+              if (
+                newManifest.result !==
+                ownership_service.DeprecatedGetLatestManifestsRsp_Manifest_Result.Result_Success
+              ) {
+                // I couldn't find any non-success manifest results that had a configuration, so they're not worth storing
+                // If they do get a successful result in the future, they will be picked up
+                this.L.trace(
+                  { productId: newManifest.productId, result: newManifest.result },
+                  'Product ID does not exist'
+                );
+                return;
+              }
+
+              let currentProduct = currentProductsMap.get(newManifest.productId);
+              if (!currentProduct || currentProduct.manifest !== newManifest.manifest) {
+                currentProduct = await this.updateProduct(
+                  newManifest.productId,
+                  currentProduct,
+                  newManifest.manifest
+                );
+              }
+
+              // After we have the latest config in the product, we can use its digital
+              // distribution version to update the manifest version.
+              const manifestVersionExists = await ManifestVersion.exists({
+                manifest: newManifest.manifest,
+                productId: newManifest.productId,
+              });
+              if (!manifestVersionExists) {
+                this.L.debug('Manifest does not exist');
+                const digitalDistributionVersion =
+                  typeof currentProduct?.configuration === 'object'
+                    ? currentProduct?.configuration?.root?.digital_distribution?.version
+                    : undefined;
+
+                const newManifestVersion = new ManifestVersion({
+                  productId: newManifest.productId,
+                  manifest: newManifest.manifest,
+                  releaseDate: new Date(),
+                  digitalDistributionVersion,
+                });
+                this.L.info(
+                  {
+                    productId: newManifestVersion.productId,
+                    manifest: newManifestVersion.manifest,
+                    digitalDistributionVersion: newManifestVersion.digitalDistributionVersion,
+                  },
+                  'Inserting new manifest version'
+                );
+                await newManifestVersion.save();
+              } else {
+                this.L.trace('Manifest version already exists');
+              }
+            })
+          );
+        } catch (err) {
+          this.L.error(err);
+        }
       })
     );
   }
@@ -145,7 +149,7 @@ export default class DbScraper {
     const accountIndex = productId % this.ownershipPool.length;
     const { limiter, ownershipConnection } = this.ownershipPool[accountIndex];
     try {
-      const configResp = await limiter.schedule(async () => {
+      const configResp = await limiter.schedule(() => {
         if (productId % 50 === 0) {
           this.L.debug({ productId, newManifest, accountIndex }, 'Getting latest product config');
         }
