@@ -39,12 +39,13 @@ export default class DbScraper {
 
     await Promise.all(
       chunkArray(productIds, this.productIdChunkSize).map((productIdsChunk, index) => {
-        const { limiter, ownershipConnection } =
-          this.ownershipPool[index % this.ownershipPool.length];
+        const accountIndex = index % this.ownershipPool.length;
+        const { limiter, ownershipConnection } = this.ownershipPool[accountIndex];
         return limiter.schedule(async () => {
           const firstProductId = productIdsChunk[0];
           const lastProductId = productIdsChunk[productIdsChunk.length - 1];
           this.L.info(
+            { accountIndex },
             `Getting manifests and current products for chunk ${firstProductId}-${lastProductId}`
           );
           const [manifestResp, currentProducts] = await Promise.all([
@@ -106,15 +107,15 @@ export default class DbScraper {
     currentProduct?: (Document<unknown, unknown, IProduct> & IProduct) | null,
     newManifest?: string
   ): Promise<void> {
+    const accountIndex = productId % this.ownershipPool.length;
     if (productId % 50 === 0) {
-      this.L.debug({ productId, newManifest }, 'Getting latest product config');
+      this.L.debug({ productId, newManifest, accountIndex }, 'Getting latest product config');
     }
-    this.L.trace({ productId, newManifest }, 'Getting latest product config');
-    const { limiter, ownershipConnection } =
-      this.ownershipPool[productId % this.ownershipPool.length];
+    this.L.trace({ productId, newManifest, accountIndex }, 'Getting latest product config');
+    const { limiter, ownershipConnection } = this.ownershipPool[accountIndex];
     return limiter.schedule(async () => {
       try {
-        this.L.trace({ productId }, 'Getting new config');
+        this.L.trace({ productId, accountIndex }, 'Getting new config');
         const configResp = await ownershipConnection.request({
           request: {
             requestId: 1,
