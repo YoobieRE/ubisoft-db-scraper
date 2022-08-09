@@ -24,6 +24,7 @@ async function scrape(target: 'config' | 'manifest'): Promise<void> {
       accounts: config.accounts,
       logger,
       throttleTime: config.throttleTime,
+      demuxTimeout: config.demuxTimeout,
     });
     const ownershipPool = await demuxPool.getOwnershipPool();
 

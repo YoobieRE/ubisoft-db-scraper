@@ -24,6 +24,7 @@ export interface DemuxPoolProps {
   accounts: Account[];
   logger: Logger;
   throttleTime?: number;
+  demuxTimeout?: number;
 }
 
 export default class DemuxPool {
@@ -35,10 +36,13 @@ export default class DemuxPool {
 
   private throttleTime = 100;
 
+  private demuxTimeout = 1000;
+
   constructor(props: DemuxPoolProps) {
     this.accounts = props.accounts;
     this.L = props.logger;
     this.throttleTime = props.throttleTime ?? this.throttleTime;
+    this.demuxTimeout = props.demuxTimeout ?? this.demuxTimeout;
   }
 
   private async getDemuxPool(): Promise<DemuxUnit[]> {

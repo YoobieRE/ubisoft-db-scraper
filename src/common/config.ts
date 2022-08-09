@@ -20,6 +20,7 @@ export interface ConfigFile {
   noPush?: boolean;
   throttleTime?: number;
   productIdChunkSize?: number;
+  demuxTimeout?: number;
 }
 
 export const configDir = process.env.CONFIG_DIR || './config';
