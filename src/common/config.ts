@@ -1,5 +1,6 @@
 import fs from 'fs-extra';
 import path from 'path';
+import type { Level } from 'pino';
 
 export interface Account {
   email: string;
@@ -9,7 +10,8 @@ export interface Account {
 
 export interface ConfigFile {
   accounts: Account[];
-  logLevel?: string;
+  logLevel?: Level;
+  fileLogLevel?: Level;
   githubToken: string;
   gitUser: string;
   gitEmail: string;

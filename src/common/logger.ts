@@ -1,19 +1,37 @@
-import pino from 'pino';
-import { config } from './config';
+import pino, { PrettyOptions } from 'pino';
+import { config, configDir } from './config';
 
-const logger = pino({
-  // transport: {
-  //   target: 'pino-pretty',
-  //   options: {
-  //     translateTime: `SYS:standard`,
-  //   },
-  // },
-  formatters: {
-    level: (label) => ({ level: label }),
+const logger = pino(
+  {
+    formatters: {
+      level: (label) => ({ level: label }),
+    },
+    timestamp: pino.stdTimeFunctions.isoTime,
+    level: 'trace', // Must be lowest level
+    base: undefined,
   },
-  timestamp: pino.stdTimeFunctions.isoTime,
-  level: config.logLevel || 'info',
-  base: undefined,
-});
+  pino.multistream([
+    {
+      level: config.logLevel || 'info',
+      stream: pino.transport<PrettyOptions>({
+        target: 'pino-pretty',
+        options: {
+          translateTime: 'SYS:standard',
+        },
+      }),
+    },
+
+    {
+      level: config.fileLogLevel || 'debug',
+      stream: pino.transport({
+        target: 'pino/file',
+        options: {
+          destination: `${configDir}/logs/log.json`,
+          mkdir: true,
+        },
+      }),
+    },
+  ])
+);
 
 export default logger;
