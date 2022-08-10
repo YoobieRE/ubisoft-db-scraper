@@ -6,7 +6,7 @@ import { config } from './common/config';
 import DemuxPool from './demux/pool';
 import DbScraper from './demux/db-scraper';
 import logger from './common/logger';
-import ProductGitArchive from './reports/git';
+import ProductGitArchive from './reports/product-git';
 
 let locked = false;
 

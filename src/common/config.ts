@@ -23,6 +23,7 @@ export interface ConfigFile {
   throttleTime?: number;
   productIdChunkSize?: number;
   demuxTimeout?: number;
+  connectionLog?: boolean;
 }
 
 export const configDir = process.env.CONFIG_DIR || './config';
