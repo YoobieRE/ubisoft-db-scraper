@@ -4,8 +4,8 @@ import { game_configuration } from 'ubisoft-demux';
 export interface IProduct {
   _id: number;
   productId: number;
-  configuration?: game_configuration.Configuration | string;
   manifest?: string;
+  configuration?: game_configuration.Configuration | string;
   readonly createdAt: Date;
   readonly updatedAt?: Date;
 }
@@ -14,11 +14,8 @@ export const productSchema = new mongoose.Schema<IProduct>(
   {
     _id: { type: Number, required: true },
     productId: { type: Number, required: true },
+    manifest: { type: String, required: false },
     configuration: { type: Object, required: false },
-    manifest: {
-      type: String,
-      required: false,
-    },
   },
   {
     timestamps: true, // Generate createdAt and updatedAt timestamps
