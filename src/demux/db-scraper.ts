@@ -245,7 +245,7 @@ export default class DbScraper {
           currentProducts.map((product) => [product._id, product])
         );
         await Promise.all(
-          productIds.map(async (productId) => {
+          productIdsChunk.map(async (productId) => {
             const currentProduct = currentProductsMap.get(productId);
             await this.updateProduct(productId, currentProduct);
           })
