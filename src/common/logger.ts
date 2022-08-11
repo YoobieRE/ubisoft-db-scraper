@@ -42,6 +42,8 @@ if (config.connectionLog) {
   debug.enable('ubisoft-demux:connection*');
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (debug as any).inspectOpts.colors = false;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (debug as any).inspectOpts.depth = 8;
 }
 
 export default logger;
