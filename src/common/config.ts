@@ -1,6 +1,7 @@
 import fs from 'fs-extra';
 import path from 'path';
 import type { Level } from 'pino';
+import { DiscordChannelWebhookList } from '../reports/discord';
 
 export interface Account {
   email: string;
@@ -24,6 +25,7 @@ export interface ConfigFile {
   productIdChunkSize?: number;
   demuxTimeout?: number;
   connectionLog?: boolean;
+  discordWebhooks: DiscordChannelWebhookList;
 }
 
 export const configDir = process.env.CONFIG_DIR || './config';

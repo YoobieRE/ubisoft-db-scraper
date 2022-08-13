@@ -7,6 +7,7 @@ import DemuxPool from './demux/pool';
 import DbScraper from './demux/db-scraper';
 import logger from './common/logger';
 import ProductGitArchive from './reports/product-git';
+import DiscordReporter from './reports/discord';
 
 let locked = false;
 
@@ -34,6 +35,15 @@ async function scrape(target: 'config' | 'manifest'): Promise<void> {
       maxProductId: config.maxProductId,
       productIdChunkSize: config.productIdChunkSize,
     });
+
+    const discordReporter = new DiscordReporter({
+      channelWebhooks: config.discordWebhooks,
+      logger,
+    });
+
+    scraper.on('configUpdate', async (newProduct, oldProduct) =>
+      discordReporter.sendProductUpdates(newProduct, oldProduct)
+    );
 
     try {
       if (target === 'config') {

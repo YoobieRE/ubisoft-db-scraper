@@ -1,15 +1,18 @@
 import { game_configuration, ownership_service } from 'ubisoft-demux';
 import yaml from 'yaml';
-import { Document } from 'mongoose';
 import deepEqual from 'fast-deep-equal';
 import { Logger } from 'pino';
-import { IProduct, Product } from '../schema/product';
+import EventEmitter from 'events';
+import TypedEmitter from 'typed-emitter';
+import { Product, ProductDocument } from '../schema/product';
 import { ProductRevision } from '../schema/product-revision';
 import { chunkArray } from '../common/util';
 import { OwnershipUnit } from './pool';
 import { ManifestVersion } from '../schema/manifest-version';
 
-type ProductDocument = Document<unknown, unknown, IProduct> & IProduct;
+export type DbScraperEvents = {
+  configUpdate: (newProduct: ProductDocument, oldProduct?: ProductDocument) => void;
+};
 
 export interface DbScraperProps {
   ownershipPool: OwnershipUnit[];
@@ -18,7 +21,7 @@ export interface DbScraperProps {
   productIdChunkSize?: number;
 }
 
-export default class DbScraper {
+export default class DbScraper extends (EventEmitter as new () => TypedEmitter<DbScraperEvents>) {
   private ownershipPool: OwnershipUnit[];
 
   private maxProductId = 10000;
@@ -28,6 +31,7 @@ export default class DbScraper {
   private L: Logger;
 
   constructor(props: DbScraperProps) {
+    super();
     this.ownershipPool = props.ownershipPool;
     this.maxProductId = props.maxProductId ?? this.maxProductId;
     this.productIdChunkSize = props.productIdChunkSize ?? this.productIdChunkSize;
@@ -204,6 +208,7 @@ export default class DbScraper {
         });
         this.L.trace({ newProduct }, 'inserting new product');
         await newProduct.save();
+        this.emit('configUpdate', newProduct);
         return newProduct;
       }
 
@@ -213,12 +218,17 @@ export default class DbScraper {
       ) {
         // If there is a change in the document
         this.L.info({ productId }, 'A change was detected. Updating the product');
-        await ProductRevision.create({ ...currentProduct.toObject(), _id: undefined }); // Save the old document
-        // Update the old document
-        await currentProduct.updateOne({
-          manifest: newManifest, // undefined does not unset property in MongoDB
-          configuration: configParsed,
+        // Save the old document
+        const oldProduct = await ProductRevision.create({
+          ...currentProduct.toObject(),
+          _id: undefined,
         });
+        // Don't overwrite existing manifest with undefined
+        if (newManifest !== undefined) currentProduct.set({ manifest: newManifest });
+        currentProduct.set({ configuration: configParsed });
+        // Update the document
+        await currentProduct.save();
+        this.emit('configUpdate', currentProduct, oldProduct);
         return currentProduct;
       }
     } catch (err) {
