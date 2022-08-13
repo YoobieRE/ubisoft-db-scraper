@@ -41,4 +41,5 @@ module.exports = {
     },
     'import/extensions': ['.js', '.ts'],
   },
+  ignorePatterns: ['dist/**', 'config/**', 'db/**'],
 };
