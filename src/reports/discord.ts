@@ -63,7 +63,7 @@ export default class DiscordReporter {
 
     changes = `\`\`\`\n${changes}\`\`\``;
 
-    const isNew = cleanOldProduct !== undefined;
+    const isNew = cleanOldProduct === undefined;
     const description = isNew
       ? `A new productId ${productId} was added`
       : `An update for productId ${productId} was detected`;
