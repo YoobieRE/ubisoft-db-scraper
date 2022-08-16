@@ -1,6 +1,6 @@
 import { EmbedBuilder } from '@discordjs/builders';
 import type { APIEmbedThumbnail } from 'discord-api-types/v10';
-import { diffString } from 'json-diff';
+import { diffString, diff } from 'json-diff';
 import mongoose from 'mongoose';
 import phin from 'phin';
 import { Logger } from 'pino';
@@ -55,6 +55,19 @@ export default class DiscordReporter {
     const cleanNewProduct = documentCleaner(newProduct);
     const cleanOldProduct = oldProduct ? documentCleaner(oldProduct) : undefined;
     const { productId } = cleanNewProduct;
+
+    const changesObj = diff(cleanOldProduct, cleanNewProduct);
+    const emptyManifests = ['', '                                        '];
+    if (
+      'manifest' in changesObj &&
+      Object.keys(changesObj).length === 1 &&
+      emptyManifests.includes(changesObj.manifest.__old) &&
+      emptyManifests.includes(changesObj.manifest.__new)
+    ) {
+      // If the change is only a switch from ' 'x40 and '' (and vice versa), just skip it
+      return;
+    }
+
     let changes = diffString(cleanOldProduct, cleanNewProduct, {
       color: false,
     });
