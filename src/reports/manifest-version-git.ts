@@ -4,8 +4,8 @@ import { ResetMode, simpleGit, SimpleGit } from 'simple-git';
 import fs from 'fs-extra';
 import os from 'os';
 import groupBy from 'just-group-by';
+import { IManifestVersion, ManifestVersion } from '../schema/manifest-version';
 import { config } from '../common/config';
-import { ManifestVersion } from '../schema/manifest-version';
 
 export interface ManifestVersionsGitProps {
   logger: Logger;
@@ -59,6 +59,8 @@ export default class ManifestVersionsGit {
     await this.git.addConfig('user.name', this.userName, undefined, 'local');
     await this.git.addConfig('user.email', this.userEmail, undefined, 'local');
 
+    await this.syncWithRemote();
+
     // make file updates
     await this.dumpManifestVersions();
 
@@ -70,12 +72,38 @@ export default class ManifestVersionsGit {
     } else {
       const { insertions, deletions } = await this.git.diffSummary('--staged');
       this.L.debug({ insertions, deletions }, 'Committing product changes');
-      await this.git.commit(`Product update\n${insertions} added, ${deletions} deleted`);
+      await this.git.commit(`Manifest version update\n${insertions} added, ${deletions} deleted`);
       if (!config.noPush) {
         await this.git.push();
         this.L.info(`Pushed changes to ${this.remote}`);
       }
     }
+  }
+
+  private async syncWithRemote(): Promise<void> {
+    const files = await fs.readdir(path.join(this.repoDir, 'versions'));
+    await Promise.all(
+      files.map(async (file) => {
+        const productVersions: IManifestVersion[] = await fs.readJSON(
+          path.join(this.repoDir, 'versions', file)
+        );
+        await Promise.all(
+          productVersions.map(async (productVersion) => {
+            const result = await ManifestVersion.updateOne(
+              {
+                productId: productVersion.productId,
+                manifest: productVersion.manifest,
+              },
+              productVersion,
+              { upsert: true }
+            );
+            if (result.upsertedCount) {
+              this.L.info({ productVersion }, 'Upserted version from remote');
+            }
+          })
+        );
+      })
+    );
   }
 
   private async dumpManifestVersions(): Promise<void> {
@@ -89,9 +117,11 @@ export default class ManifestVersionsGit {
     // Output to JSON files
     await Promise.all(
       Object.entries(productGroups).map(async ([productId, productVersions]) =>
-        fs.outputJSON(path.join(this.repoDir, 'versions', `${productId}.json`), productVersions, {
-          spaces: 2,
-        })
+        fs.outputJSON(
+          path.join(this.repoDir, 'versions', `${productId.padStart(5, '0')}.json`),
+          productVersions,
+          { spaces: 2 }
+        )
       )
     );
     this.L.info(`Dumped manifest versions to ${Object.keys(productGroups).length} JSON files`);

@@ -8,6 +8,7 @@ import DbScraper from './demux/db-scraper';
 import logger from './common/logger';
 import ProductGitArchive from './reports/product-git';
 import DiscordReporter from './reports/discord';
+import ManifestVersionsGit from './reports/manifest-version-git';
 
 let locked = false;
 
@@ -65,6 +66,14 @@ async function scrape(target: 'config' | 'manifest'): Promise<void> {
       userEmail: config.gitEmail,
     });
     await productArchive.archive();
+    const manifestVersions = new ManifestVersionsGit({
+      logger,
+      remote: config.manifestVersionsRemote,
+      token: config.githubToken,
+      userName: config.gitUser,
+      userEmail: config.gitEmail,
+    });
+    await manifestVersions.archive();
 
     await mongooseConnection.disconnect();
   } catch (err) {

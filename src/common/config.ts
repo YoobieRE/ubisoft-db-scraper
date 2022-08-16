@@ -17,6 +17,7 @@ export interface ConfigFile {
   gitUser: string;
   gitEmail: string;
   productArchiveRemote: string;
+  manifestVersionsRemote: string;
   dbConnectionString: string;
   noSchedule?: boolean;
   maxProductId?: number;
