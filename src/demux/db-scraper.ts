@@ -40,7 +40,10 @@ export default class DbScraper extends (EventEmitter as new () => TypedEmitter<D
     this.maxProductId = props.maxProductId ?? this.maxProductId;
     this.productIdChunkSize = props.productIdChunkSize ?? this.productIdChunkSize;
     this.L = props.logger;
-    this.retryOptions = { retries: props.maxRetries ?? 5 };
+    this.retryOptions = {
+      retries: props.maxRetries ?? 5,
+      onFailedAttempt: (err) => this.L.debug(err),
+    };
   }
 
   public async scrapeManifests(): Promise<void> {
