@@ -5,6 +5,7 @@ import schedule from 'node-schedule';
 import { config } from './common/config';
 import DemuxPool from './demux/pool';
 import DbScraper from './demux/db-scraper';
+import LauncherScraper from './demux/launcher-scraper';
 import logger from './common/logger';
 import ProductGitArchive from './reports/product-git';
 import DiscordReporter from './reports/discord';
@@ -22,41 +23,48 @@ async function scrape(target: 'config' | 'manifest'): Promise<void> {
       autoIndex: false,
     });
 
+    const discordReporter = new DiscordReporter({
+      channelWebhooks: config.discordWebhooks,
+      logger,
+    });
     const demuxPool = new DemuxPool({
       accounts: config.accounts,
       logger,
       throttleTime: config.throttleTime,
       demuxTimeout: config.demuxTimeout,
     });
-    const ownershipPool = await demuxPool.getOwnershipPool();
 
-    const scraper = new DbScraper({
-      ownershipPool,
-      logger,
-      maxProductId: config.maxProductId,
-      productIdChunkSize: config.productIdChunkSize,
-    });
-
-    const discordReporter = new DiscordReporter({
-      channelWebhooks: config.discordWebhooks,
+    const launcherScraper = new LauncherScraper({
       logger,
     });
-
-    scraper.on('configUpdate', async (newProduct, oldProduct) =>
-      discordReporter.sendProductUpdates(newProduct, oldProduct)
-    );
 
     try {
+      const ownershipPool = await demuxPool.getOwnershipPool();
+      const dbScraper = new DbScraper({
+        ownershipPool,
+        logger,
+        maxProductId: config.maxProductId,
+        productIdChunkSize: config.productIdChunkSize,
+      });
+      dbScraper.on('configUpdate', discordReporter.sendProductUpdates.bind(discordReporter));
+
       if (target === 'config') {
-        await scraper.scrapeConfigurations();
+        await dbScraper.scrapeConfigurations();
       } else {
-        await scraper.scrapeManifests();
+        await dbScraper.scrapeManifests();
       }
+
+      // Get launcher data
+      launcherScraper.on(
+        'launcherUpdate',
+        discordReporter.sendLauncherUpdate.bind(discordReporter)
+      );
+      await launcherScraper.scrapeLauncherVersion();
     } catch (err) {
       logger.error(err);
     }
-
     await demuxPool.destroy();
+    await launcherScraper.destroy();
 
     const productArchive = new ProductGitArchive({
       logger,

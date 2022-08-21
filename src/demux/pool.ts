@@ -45,7 +45,7 @@ export default class DemuxPool {
     this.demuxTimeout = props.demuxTimeout ?? this.demuxTimeout;
   }
 
-  private async getDemuxPool(): Promise<DemuxUnit[]> {
+  public async getDemuxPool(): Promise<DemuxUnit[]> {
     if (this.demuxPool) return this.demuxPool;
 
     const ubiServices = new UbiServicesApi();
@@ -143,5 +143,6 @@ export default class DemuxPool {
     if (this.demuxPool) {
       await Promise.all(this.demuxPool.map((demuxUnit) => demuxUnit.demux.destroy()));
     }
+    this.demuxPool = undefined;
   }
 }

@@ -5,10 +5,12 @@ import mongoose from 'mongoose';
 import phin from 'phin';
 import { Logger } from 'pino';
 import { game_configuration } from 'ubisoft-demux';
+import { LauncherVersionDocument } from '../schema/launcher-version';
 import { ProductDocument } from '../schema/product';
 
 export interface DiscordChannelWebhookList {
   default: string;
+  launcher: string;
   [productId: string]: string;
 }
 
@@ -32,6 +34,8 @@ export default class DiscordReporter {
 
   private defaultWebhook: string;
 
+  private launcherWebhook: string | undefined;
+
   private author = 'YoobieTracker';
 
   private authorIcon = 'https://avatars.githubusercontent.com/u/110780530';
@@ -44,6 +48,7 @@ export default class DiscordReporter {
     if (!props.channelWebhooks.default)
       throw new Error('Discord webhook list must have a "default" webhook');
     this.defaultWebhook = props.channelWebhooks.default;
+    this.launcherWebhook = props.channelWebhooks.launcher;
     this.channelWebhooks = new Map(Object.entries(props.channelWebhooks));
     this.L = props.logger;
   }
@@ -116,6 +121,37 @@ export default class DiscordReporter {
     const webhookUrl = this.channelWebhooks.get(productId.toString()) || this.defaultWebhook;
 
     this.L.debug({ webhookUrl, productId }, 'Sending product update message to webhook');
+    try {
+      await phin({
+        method: 'POST',
+        url: webhookUrl,
+        data: JSON.stringify({ embeds: [embed] }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch (err) {
+      this.L.error(err);
+    }
+  }
+
+  public async sendLauncherUpdate(newVersion: LauncherVersionDocument): Promise<void> {
+    const embed = new EmbedBuilder({
+      author: {
+        name: this.author,
+        icon_url: this.authorIcon,
+        url: this.authorUrl,
+      },
+      title: 'Ubisoft Connect',
+      description: 'An update for Ubisoft Connect was detected',
+      color: 5793266, // Blurple
+      fields: [
+        { name: 'Patch Track ID', value: newVersion.patchTrackId, inline: true },
+        { name: 'Version Number', value: newVersion.latestVersion.toString(), inline: true },
+      ],
+    });
+
+    const webhookUrl = this.launcherWebhook || this.defaultWebhook;
+
+    this.L.debug({ webhookUrl }, 'Sending launcher update message to webhook');
     try {
       await phin({
         method: 'POST',
