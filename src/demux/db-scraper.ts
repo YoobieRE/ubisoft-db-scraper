@@ -1,6 +1,7 @@
 import { game_configuration, ownership_service } from 'ubisoft-demux';
 import yaml from 'yaml';
 import deepEqual from 'fast-deep-equal';
+import pRetry from 'p-retry';
 import { Logger } from 'pino';
 import EventEmitter from 'events';
 import TypedEmitter from 'typed-emitter';
@@ -19,6 +20,7 @@ export interface DbScraperProps {
   logger: Logger;
   maxProductId?: number;
   productIdChunkSize?: number;
+  maxRetries?: number;
 }
 
 export default class DbScraper extends (EventEmitter as new () => TypedEmitter<DbScraperEvents>) {
@@ -30,12 +32,15 @@ export default class DbScraper extends (EventEmitter as new () => TypedEmitter<D
 
   private L: Logger;
 
+  private retryOptions: pRetry.Options;
+
   constructor(props: DbScraperProps) {
     super();
     this.ownershipPool = props.ownershipPool;
     this.maxProductId = props.maxProductId ?? this.maxProductId;
     this.productIdChunkSize = props.productIdChunkSize ?? this.productIdChunkSize;
     this.L = props.logger;
+    this.retryOptions = { retries: props.maxRetries ?? 5 };
   }
 
   public async scrapeManifests(): Promise<void> {
@@ -52,21 +57,25 @@ export default class DbScraper extends (EventEmitter as new () => TypedEmitter<D
         const lastProductId = productIdsChunk[productIdsChunk.length - 1];
 
         try {
-          const manifestResp = await limiter.schedule(() => {
-            this.L.info(
-              { accountIndex },
-              `Getting manifests and current products for chunk ${firstProductId}-${lastProductId}`
-            );
-            return ownershipConnection.request({
-              request: {
-                requestId: 1,
-                deprecatedGetLatestManifestsReq: {
-                  deprecatedTestConfig: false,
-                  deprecatedProductIds: productIdsChunk,
-                },
-              },
-            });
-          });
+          const manifestResp = await pRetry(
+            async () =>
+              limiter.add(() => {
+                this.L.info(
+                  { accountIndex },
+                  `Getting manifests and current products for chunk ${firstProductId}-${lastProductId}`
+                );
+                return ownershipConnection.request({
+                  request: {
+                    requestId: 1,
+                    deprecatedGetLatestManifestsReq: {
+                      deprecatedTestConfig: false,
+                      deprecatedProductIds: productIdsChunk,
+                    },
+                  },
+                });
+              }),
+            this.retryOptions
+          );
           const currentProducts = await Product.find({
             _id: { $gte: firstProductId, $lte: lastProductId },
           });
@@ -153,21 +162,28 @@ export default class DbScraper extends (EventEmitter as new () => TypedEmitter<D
     const accountIndex = productId % this.ownershipPool.length;
     const { limiter, ownershipConnection } = this.ownershipPool[accountIndex];
     try {
-      const configResp = await limiter.schedule(() => {
-        if (productId % 50 === 0) {
-          this.L.debug({ productId, newManifest, accountIndex }, 'Getting latest product config');
-        }
-        this.L.trace({ productId, newManifest, accountIndex }, 'Getting latest product config');
-        return ownershipConnection.request({
-          request: {
-            requestId: 1,
-            getProductConfigReq: {
-              deprecatedTestConfig: false,
-              productId,
-            },
-          },
-        });
-      });
+      const configResp = await pRetry(
+        async () =>
+          limiter.add(() => {
+            if (productId % 50 === 0) {
+              this.L.debug(
+                { productId, newManifest, accountIndex },
+                'Getting latest product config'
+              );
+            }
+            this.L.trace({ productId, newManifest, accountIndex }, 'Getting latest product config');
+            return ownershipConnection.request({
+              request: {
+                requestId: 1,
+                getProductConfigReq: {
+                  deprecatedTestConfig: false,
+                  productId,
+                },
+              },
+            });
+          }),
+        this.retryOptions
+      );
       const configuration = configResp.response?.getProductConfigRsp?.configuration;
       if (
         configResp.response?.getProductConfigRsp?.result !==

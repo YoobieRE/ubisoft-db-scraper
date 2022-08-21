@@ -1,4 +1,4 @@
-import Bottleneck from 'bottleneck';
+import PQueue from 'p-queue';
 import {
   UbisoftDemux,
   ownership_service,
@@ -13,7 +13,7 @@ import { Account } from '../common/config';
 
 export interface DemuxUnit {
   demux: UbisoftDemux;
-  limiter: Bottleneck;
+  limiter: PQueue;
 }
 
 export interface OwnershipUnit extends DemuxUnit {
@@ -101,7 +101,7 @@ export default class DemuxPool {
 
         if (!authResponse.authenticateRsp?.success) throw new Error('Not able to authenticate');
         this.L.info({ email }, 'Successfully logged in and authenticated');
-        const limiter = new Bottleneck({ concurrency: 1, minTime: this.throttleTime, id: email });
+        const limiter = new PQueue({ concurrency: 1, interval: this.throttleTime, intervalCap: 1 });
         return {
           demux,
           limiter,

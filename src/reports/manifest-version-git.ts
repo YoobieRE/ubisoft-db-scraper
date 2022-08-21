@@ -4,6 +4,7 @@ import { ResetMode, simpleGit, SimpleGit } from 'simple-git';
 import fs from 'fs-extra';
 import os from 'os';
 import groupBy from 'just-group-by';
+import { parse as jsoncParse } from 'jsonc-parser';
 import { IManifestVersion, ManifestVersion } from '../schema/manifest-version';
 import { config } from '../common/config';
 
@@ -85,9 +86,11 @@ export default class ManifestVersionsGit {
       const files = await fs.readdir(path.join(this.repoDir, 'versions'));
       await Promise.all(
         files.map(async (file) => {
-          const productVersions: IManifestVersion[] = await fs.readJSON(
-            path.join(this.repoDir, 'versions', file)
+          const jsonText: string = await fs.readFile(
+            path.join(this.repoDir, 'versions', file),
+            'utf-8'
           );
+          const productVersions: IManifestVersion[] = jsoncParse(jsonText);
           await Promise.all(
             productVersions.map(async (productVersion) => {
               const result = await ManifestVersion.updateOne(
