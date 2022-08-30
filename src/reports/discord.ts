@@ -1,5 +1,5 @@
 import { EmbedBuilder } from '@discordjs/builders';
-import type { APIEmbedThumbnail } from 'discord-api-types/v10';
+import type { APIEmbedField, APIEmbedThumbnail } from 'discord-api-types/v10';
 import { diffString, diff } from 'json-diff';
 import mongoose from 'mongoose';
 import phin from 'phin';
@@ -103,19 +103,32 @@ export default class DiscordReporter {
       };
     }
 
+    const allNames = [
+      (cleanNewProduct.configuration as game_configuration.Configuration)?.root?.name,
+      (cleanNewProduct.configuration as game_configuration.Configuration)?.root?.installer
+        ?.game_identifier,
+      (cleanNewProduct.configuration as game_configuration.Configuration)?.root?.sort_string,
+      (cleanNewProduct.configuration as game_configuration.Configuration)?.root?.display_name,
+    ].filter((name): name is string => Boolean(name));
+    const title = allNames[0];
+    const alternativeNames = allNames.slice(1);
+
+    const fields: APIEmbedField[] = [{ name: 'Changes', value: changes }];
+    if (alternativeNames.length) {
+      fields.unshift({ name: 'Other Names', value: alternativeNames.join('; ') });
+    }
+
     const embed = new EmbedBuilder({
       author: {
         name: this.author,
         icon_url: this.authorIcon,
         url: this.authorUrl,
       },
-      title:
-        (cleanNewProduct.configuration as game_configuration.Configuration)?.root?.name ||
-        undefined,
+      title,
       thumbnail: thumbnailEmbed,
       description,
       color,
-      fields: [{ name: 'Changes', value: changes }],
+      fields,
     });
 
     const webhookUrl = this.channelWebhooks.get(productId.toString()) || this.defaultWebhook;
