@@ -93,9 +93,9 @@ async function scrape(target: 'config' | 'manifest'): Promise<void> {
 logger.debug({ config }, 'Found config');
 
 if (config.noSchedule) {
-  scrape('manifest');
+  scrape('config');
 } else {
   logger.info('Started, scheduling scraping jobs');
-  schedule.scheduleJob('1 * * * *', () => scrape('manifest'));
-  schedule.scheduleJob('0 0 * * *', () => scrape('config'));
+  // schedule.scheduleJob('1 * * * *', () => scrape('manifest'));
+  schedule.scheduleJob('0 1/2 * * *', () => scrape('config'));
 }
