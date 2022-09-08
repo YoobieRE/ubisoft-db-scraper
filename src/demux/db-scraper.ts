@@ -266,7 +266,7 @@ export default class DbScraper extends (EventEmitter as new () => TypedEmitter<D
       chunkArray(productIds, this.productIdChunkSize).map(async (productIdsChunk) => {
         const firstProductId = productIdsChunk[0];
         const lastProductId = productIdsChunk[productIdsChunk.length - 1];
-        this.L.info(`Getting current products for chunk ${firstProductId}-${lastProductId}`);
+        this.L.debug(`Getting current products for chunk ${firstProductId}-${lastProductId}`);
         const currentProducts = await Product.find({
           _id: { $gte: firstProductId, $lte: lastProductId },
         });
