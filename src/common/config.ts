@@ -11,6 +11,9 @@ export interface Account {
 
 export interface ConfigFile {
   accounts: Account[];
+  discordBotAccount: Account;
+  discordBotToken: string;
+  discordTestGuild?: string;
   logLevel?: Level;
   fileLogLevel?: Level;
   githubToken: string;

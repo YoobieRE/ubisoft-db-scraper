@@ -51,6 +51,7 @@ export default class DemuxPool {
     const ubiServices = new UbiServicesApi();
     this.demuxPool = await Promise.all(
       this.accounts.map(async ({ email, password, totp }) => {
+        // TODO: switch to UbiTicketManager
         let rememberMeTicket: string | null | undefined = await readRememberMeTicket(email);
         let ticket: string;
 

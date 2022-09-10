@@ -10,6 +10,7 @@ import logger from './common/logger';
 import ProductGitArchive from './reports/product-git';
 import DiscordReporter from './reports/discord';
 import ManifestVersionsGit from './reports/manifest-version-git';
+import { DiscordBot } from './bot/discord-bot';
 
 let locked = false;
 
@@ -98,4 +99,13 @@ if (config.noSchedule) {
   logger.info('Started, scheduling scraping jobs');
   // schedule.scheduleJob('1 * * * *', () => scrape('manifest'));
   schedule.scheduleJob('0 1/2 * * *', () => scrape('config'));
+}
+
+if (config.discordBotToken) {
+  DiscordBot.build({
+    botToken: config.discordBotToken,
+    ubiAccount: config.discordBotAccount,
+    testGuildId: config.discordTestGuild,
+    logger,
+  });
 }
