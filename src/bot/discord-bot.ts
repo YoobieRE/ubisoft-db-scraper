@@ -2,8 +2,14 @@ import { Logger } from 'pino';
 import Discord from 'discord.js';
 import { REST } from '@discordjs/rest';
 import { Routes } from 'discord-api-types/v10';
-import { game_configuration, ownership_service, UbisoftDemux } from 'ubisoft-demux';
+import {
+  game_configuration,
+  ownership_service,
+  UbisoftDemux,
+  UbisoftFileParser,
+} from 'ubisoft-demux';
 import yaml from 'yaml';
+import phin from 'phin';
 import { commands } from './deploy-commands';
 import { Account } from '../common/config';
 import { UbiTicketManager } from '../demux/ticket-manager';
@@ -79,6 +85,9 @@ export class DiscordBot {
     if (interaction.commandName === 'config') {
       await this.configCommand(interaction);
     }
+    if (interaction.commandName === 'manifest') {
+      await this.manifestCommand(interaction);
+    }
   }
 
   private async configCommand(interaction: Discord.ChatInputCommandInteraction): Promise<void> {
@@ -153,5 +162,31 @@ export class DiscordBot {
       this.L.error(err);
     }
     await demux.destroy();
+  }
+
+  private async manifestCommand(interaction: Discord.ChatInputCommandInteraction): Promise<void> {
+    try {
+      const manifestAttachment = interaction.options.getAttachment('manifest', true);
+      const attachmentUrl = manifestAttachment.attachment.toString();
+      const resp = await phin(attachmentUrl);
+      const manifestBin = resp.body;
+      const fileParser = new UbisoftFileParser();
+      const decodedManifest = fileParser.parseDownloadManifest(manifestBin);
+      let manifestJson = JSON.stringify(decodedManifest, null, 2);
+      if (manifestJson.length > 8 * 1024 * 1024) {
+        // If greater than 8MiB, remove the formatting and try that
+        manifestJson = JSON.stringify(decodedManifest);
+      }
+      const configFile = new Discord.AttachmentBuilder(Buffer.from(manifestJson, 'utf-8'), {
+        name: `${manifestAttachment.name}.json`,
+      });
+      await interaction.reply({
+        content: `Decoded manifest:`,
+        files: [configFile],
+      });
+    } catch (err) {
+      this.L.error(err);
+      await interaction.reply('Error parsing manifest');
+    }
   }
 }

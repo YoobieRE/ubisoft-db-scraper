@@ -7,4 +7,11 @@ export const configCommand = new SlashCommandBuilder()
     opt.setName('product-id').setDescription('ID number for the product').setRequired(true)
   );
 
-export const commands = [configCommand].map((c) => c.toJSON());
+export const manifestCommand = new SlashCommandBuilder()
+  .setName('manifest')
+  .setDescription('Decode a uplay_install.manifest file to JSON')
+  .addAttachmentOption((opt) =>
+    opt.setName('manifest').setDescription('Attach a uplay_install.manifest file').setRequired(true)
+  );
+
+export const commands = [configCommand, manifestCommand].map((c) => c.toJSON());
