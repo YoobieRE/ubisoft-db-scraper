@@ -1,4 +1,5 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
+import { PermissionsBitField } from 'discord.js';
 
 export const configCommand = new SlashCommandBuilder()
   .setName('config')
@@ -16,6 +17,7 @@ export const manifestCommand = new SlashCommandBuilder()
 
 export const storeCommand = new SlashCommandBuilder()
   .setName('store')
-  .setDescription('Listen and log any push events for the store service connection');
+  .setDescription('Listen and log any push events for the store service connection')
+  .setDefaultMemberPermissions(PermissionsBitField.resolve('Administrator'));
 
 export const commands = [configCommand, manifestCommand, storeCommand].map((c) => c.toJSON());
