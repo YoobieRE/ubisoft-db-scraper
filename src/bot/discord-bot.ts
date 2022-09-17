@@ -10,7 +10,7 @@ import {
 } from 'ubisoft-demux';
 import yaml from 'yaml';
 import phin from 'phin';
-import { commands } from './deploy-commands';
+import { commands, storeCommand } from './deploy-commands';
 import { Account } from '../common/config';
 import { UbiTicketManager } from '../demux/ticket-manager';
 
@@ -87,6 +87,46 @@ export class DiscordBot {
     }
     if (interaction.commandName === 'manifest') {
       await this.manifestCommand(interaction);
+    }
+    if (interaction.commandName === storeCommand.name) {
+      await this.storeListen(interaction);
+    }
+  }
+
+  private async storeListen(interaction: Discord.ChatInputCommandInteraction): Promise<void> {
+    const demux = new UbisoftDemux({ timeout: 2500 }); // Shorter than 3 second Discord timeout
+    try {
+      await demux.basicRequest({
+        authenticateReq: {
+          clientId: 'uplay_pc',
+          sendKeepAlive: false,
+          token: {
+            ubiTicket: await this.ticketManager.getTicket(),
+          },
+        },
+      });
+      const storeConnection = await demux.openConnection('store_service');
+      demux.socket.on('push', (payload) => {
+        this.L.info({ payload }, 'socket push event');
+      });
+      storeConnection.on('push', (payload) => {
+        this.L.info({ payload }, 'store push event');
+      });
+      const initResp = await storeConnection.request({
+        request: {
+          requestId: 1,
+          initializeReq: {
+            protoVersion: 7,
+            useStaging: false,
+          },
+        },
+      });
+      this.L.info({ initResp }, 'Store connection init response');
+
+      await interaction.reply(`Internally logging any store push events...`);
+    } catch (err) {
+      this.L.error(err);
+      await demux.destroy();
     }
   }
 

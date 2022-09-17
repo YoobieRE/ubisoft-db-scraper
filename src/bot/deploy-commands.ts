@@ -14,4 +14,8 @@ export const manifestCommand = new SlashCommandBuilder()
     opt.setName('manifest').setDescription('Attach a uplay_install.manifest file').setRequired(true)
   );
 
-export const commands = [configCommand, manifestCommand].map((c) => c.toJSON());
+export const storeCommand = new SlashCommandBuilder()
+  .setName('store')
+  .setDescription('Listen and log any push events for the store service connection');
+
+export const commands = [configCommand, manifestCommand, storeCommand].map((c) => c.toJSON());
