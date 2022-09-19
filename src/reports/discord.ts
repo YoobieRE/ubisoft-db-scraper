@@ -178,6 +178,14 @@ export default class DiscordReporter {
   }
 
   public async sendStoreUpdate(payload: Pick<store_service.Downstream, 'push'>): Promise<void> {
+    const productId =
+      payload.push?.revisionsUpdatedPush?.updateInfo?.[0]?.productId ||
+      payload.push?.storeUpdate?.storeProducts?.[0]?.productId;
+
+    const description = productId
+      ? `A store update was pushed for productId ${productId}`
+      : `A store update was pushed`;
+
     const embed = new EmbedBuilder({
       author: {
         name: this.author,
@@ -185,7 +193,7 @@ export default class DiscordReporter {
         url: this.authorUrl,
       },
       title: 'Ubisoft Connect',
-      description: 'A store update was pushed',
+      description,
       color: 15548997, // Red
       fields: [
         { name: 'Update Payload', value: `\`\`\`\n${JSON.stringify(payload.push, null, 2)}\`\`\`` },
