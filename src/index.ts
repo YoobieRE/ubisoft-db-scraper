@@ -11,6 +11,14 @@ import ProductGitArchive from './reports/product-git';
 import DiscordReporter from './reports/discord';
 import ManifestVersionsGit from './reports/manifest-version-git';
 import { DiscordBot } from './bot/discord-bot';
+import StoreListener from './demux/store-listener';
+
+logger.debug({ config }, 'Found config');
+
+const discordReporter = new DiscordReporter({
+  channelWebhooks: config.discordWebhooks,
+  logger,
+});
 
 let locked = false;
 
@@ -24,10 +32,6 @@ async function scrape(target: 'config' | 'manifest'): Promise<void> {
       autoIndex: false,
     });
 
-    const discordReporter = new DiscordReporter({
-      channelWebhooks: config.discordWebhooks,
-      logger,
-    });
     const demuxPool = new DemuxPool({
       accounts: config.accounts,
       logger,
@@ -91,21 +95,27 @@ async function scrape(target: 'config' | 'manifest'): Promise<void> {
   locked = false;
 }
 
-logger.debug({ config }, 'Found config');
+async function main(): Promise<void> {
+  const storeListener = new StoreListener({ account: config.discordBotAccount, logger });
+  await storeListener.listenForUpdates();
+  storeListener.on('update', discordReporter.sendStoreUpdate.bind(discordReporter));
 
-if (config.noSchedule) {
-  scrape('config');
-} else {
-  logger.info('Started, scheduling scraping jobs');
-  // schedule.scheduleJob('1 * * * *', () => scrape('manifest'));
-  schedule.scheduleJob('0 1/2 * * *', () => scrape('config'));
+  if (config.discordBotToken) {
+    DiscordBot.build({
+      botToken: config.discordBotToken,
+      ubiAccount: config.discordBotAccount,
+      testGuildId: config.discordTestGuild,
+      logger,
+    });
+  }
+
+  if (config.noSchedule) {
+    await scrape('config');
+  } else {
+    logger.info('Started, scheduling scraping jobs');
+    // schedule.scheduleJob('1 * * * *', () => scrape('manifest'));
+    schedule.scheduleJob('0 1/2 * * *', () => scrape('config'));
+  }
 }
 
-if (config.discordBotToken) {
-  DiscordBot.build({
-    botToken: config.discordBotToken,
-    ubiAccount: config.discordBotAccount,
-    testGuildId: config.discordTestGuild,
-    logger,
-  });
-}
+main();

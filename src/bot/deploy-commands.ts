@@ -20,4 +20,4 @@ export const storeCommand = new SlashCommandBuilder()
   .setDescription('Listen and log any push events for the store service connection')
   .setDefaultMemberPermissions(PermissionsBitField.resolve('Administrator'));
 
-export const commands = [configCommand, manifestCommand, storeCommand].map((c) => c.toJSON());
+export const commands = [configCommand, manifestCommand].map((c) => c.toJSON());

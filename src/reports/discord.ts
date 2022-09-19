@@ -4,7 +4,7 @@ import { diffString, diff } from 'json-diff';
 import mongoose from 'mongoose';
 import phin from 'phin';
 import { Logger } from 'pino';
-import { game_configuration } from 'ubisoft-demux';
+import { game_configuration, store_service } from 'ubisoft-demux';
 import { LauncherVersionDocument } from '../schema/launcher-version';
 import { ProductDocument } from '../schema/product';
 
@@ -165,6 +165,36 @@ export default class DiscordReporter {
     const webhookUrl = this.launcherWebhook || this.defaultWebhook;
 
     this.L.debug({ webhookUrl }, 'Sending launcher update message to webhook');
+    try {
+      await phin({
+        method: 'POST',
+        url: webhookUrl,
+        data: JSON.stringify({ embeds: [embed] }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch (err) {
+      this.L.error(err);
+    }
+  }
+
+  public async sendStoreUpdate(payload: Pick<store_service.Downstream, 'push'>): Promise<void> {
+    const embed = new EmbedBuilder({
+      author: {
+        name: this.author,
+        icon_url: this.authorIcon,
+        url: this.authorUrl,
+      },
+      title: 'Ubisoft Connect',
+      description: 'A store update was pushed',
+      color: 15548997, // Red
+      fields: [
+        { name: 'Update Payload', value: `\`\`\`\n${JSON.stringify(payload.push, null, 2)}\`\`\`` },
+      ],
+    });
+
+    const webhookUrl = this.defaultWebhook;
+
+    this.L.debug({ webhookUrl }, 'Sending store update message to webhook');
     try {
       await phin({
         method: 'POST',
