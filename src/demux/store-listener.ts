@@ -37,6 +37,10 @@ export default class StoreListener extends (EventEmitter as new () => TypedEmitt
         },
       },
     });
+
+    (this.demux.socket as any).socket.on('timeout', () => this.L.error('Store socket timeout'));
+    (this.demux.socket as any).socket.on('end', () => this.L.error('Store socket end'));
+    (this.demux.socket as any).socket.on('close', () => this.L.error('Store socket end'));
     const storeConnection = await this.demux.openConnection('store_service');
     storeConnection.on('push', (payload) => {
       const payloadObj: Pick<store_service.Downstream, 'push'> = payload.toJSON();
