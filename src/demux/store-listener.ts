@@ -2,11 +2,18 @@ import { Logger } from 'pino';
 import EventEmitter from 'events';
 import TypedEmitter from 'typed-emitter';
 import { store_service, UbisoftDemux } from 'ubisoft-demux';
+import type { Message } from 'protobufjs';
 import { Account } from '../common/config';
 import { UbiTicketManager } from './ticket-manager';
 
 export type StoreListenerEvents = {
-  update: (payload: Pick<store_service.Downstream, 'push'>) => void;
+  storeProductRemoved: (productId: number) => void;
+  storeProductUpdate: (storeProduct: store_service.StoreProduct) => void;
+  revisionProductRemoved: (productId: number, storeDataType?: store_service.StoreType) => void;
+  revisionProductUpdate: (
+    storeProductUpdate: store_service.StoreProductUpdateInfo,
+    storeDataType?: store_service.StoreType
+  ) => void;
 };
 
 export interface StoreListenerProps {
@@ -42,11 +49,7 @@ export default class StoreListener extends (EventEmitter as new () => TypedEmitt
     (this.demux.socket as any).socket.on('end', () => this.L.error('Store socket end'));
     (this.demux.socket as any).socket.on('close', () => this.L.error('Store socket close'));
     const storeConnection = await this.demux.openConnection('store_service');
-    storeConnection.on('push', (payload) => {
-      const payloadObj: Pick<store_service.Downstream, 'push'> = payload.toJSON();
-      this.L.info({ payload: payloadObj }, 'store push event');
-      this.emit('update', payloadObj);
-    });
+    storeConnection.on('push', this.onPush.bind(this));
     const initResp = await storeConnection.request({
       request: {
         requestId: 1,
@@ -58,6 +61,38 @@ export default class StoreListener extends (EventEmitter as new () => TypedEmitt
     });
     this.L.debug({ initResp }, 'Store connection init response');
     this.L.info('Listening for store updates');
+  }
+
+  private onPush(payload: store_service.Downstream & Message): void {
+    this.L.info({ payload }, 'store push event');
+    const { push } = payload;
+    if (!push) return;
+    if ('storeUpdate' in push && push.storeUpdate) {
+      const { storeUpdate } = push;
+      if (storeUpdate.removedProducts?.length) {
+        storeUpdate.removedProducts.forEach((productId) =>
+          this.emit('storeProductRemoved', productId)
+        );
+      }
+      if (storeUpdate.storeProducts?.length) {
+        storeUpdate.storeProducts.forEach((product) => this.emit('storeProductUpdate', product));
+      }
+    }
+
+    if ('revisionsUpdatedPush' in push && push.revisionsUpdatedPush) {
+      const { revisionsUpdatedPush } = push;
+      const { storeDataType } = revisionsUpdatedPush; // storeDataType can be undefined (maybe?)
+      if (revisionsUpdatedPush.removedProducts?.length) {
+        revisionsUpdatedPush.removedProducts.forEach((productId) =>
+          this.emit('revisionProductRemoved', productId, storeDataType)
+        );
+      }
+      if (revisionsUpdatedPush.updateInfo?.length) {
+        revisionsUpdatedPush.updateInfo.forEach((productInfo) =>
+          this.emit('revisionProductUpdate', productInfo, storeDataType)
+        );
+      }
+    }
   }
 
   public async destroy(): Promise<void> {

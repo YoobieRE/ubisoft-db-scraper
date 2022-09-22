@@ -96,9 +96,24 @@ async function scrape(target: 'config' | 'manifest'): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  const storeListener = new StoreListener({ account: config.discordBotAccount, logger });
+  const storeListener = new StoreListener({ account: config.storeListenerAccount, logger });
   await storeListener.listenForUpdates();
-  storeListener.on('update', discordReporter.sendStoreUpdate.bind(discordReporter));
+  storeListener.on(
+    'revisionProductRemoved',
+    discordReporter.sendStoreRevisionProductRemoved.bind(discordReporter)
+  );
+  storeListener.on(
+    'revisionProductUpdate',
+    discordReporter.sendStoreRevisionProductUpdate.bind(discordReporter)
+  );
+  storeListener.on(
+    'storeProductRemoved',
+    discordReporter.sendStoreProductRemoved.bind(discordReporter)
+  );
+  storeListener.on(
+    'storeProductUpdate',
+    discordReporter.sendStoreProductUpdate.bind(discordReporter)
+  );
 
   if (config.discordBotToken) {
     DiscordBot.build({

@@ -29,6 +29,15 @@ function documentCleaner<T>(document: mongoose.Document<unknown, unknown, T> & T
   return cleanDoc;
 }
 
+function storeDataTypeToString(storeDataType: store_service.StoreType): string {
+  if (storeDataType === store_service.StoreType.StoreType_Ingame) {
+    return 'Ingame';
+  }
+  if (storeDataType === store_service.StoreType.StoreType_Upsell) {
+    return 'Upsell';
+  }
+  return 'Unknown';
+}
 export default class DiscordReporter {
   private channelWebhooks: Map<string, string>;
 
@@ -177,14 +186,18 @@ export default class DiscordReporter {
     }
   }
 
-  public async sendStoreUpdate(payload: Pick<store_service.Downstream, 'push'>): Promise<void> {
-    const productId =
-      payload.push?.revisionsUpdatedPush?.updateInfo?.[0]?.productId ||
-      payload.push?.storeUpdate?.storeProducts?.[0]?.productId;
-
-    const description = productId
-      ? `A store update was pushed for productId ${productId}`
-      : `A store update was pushed`;
+  public async sendStoreRevisionProductRemoved(
+    productId: number,
+    storeDataType?: store_service.StoreType
+  ): Promise<void> {
+    const fields: APIEmbedField[] = [];
+    if (storeDataType) {
+      const storeType = storeDataTypeToString(storeDataType);
+      fields.push({
+        name: 'StoreType',
+        value: storeType,
+      });
+    }
 
     const embed = new EmbedBuilder({
       author: {
@@ -193,10 +206,113 @@ export default class DiscordReporter {
         url: this.authorUrl,
       },
       title: 'Ubisoft Connect',
-      description,
+      description: `A store revision product was removed for productId ${productId}`,
+      color: 15548997, // Red
+      fields,
+    });
+
+    const webhookUrl = this.defaultWebhook;
+
+    this.L.debug({ webhookUrl }, 'Sending store update message to webhook');
+    try {
+      await phin({
+        method: 'POST',
+        url: webhookUrl,
+        data: JSON.stringify({ embeds: [embed] }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch (err) {
+      this.L.error(err);
+    }
+  }
+
+  public async sendStoreRevisionProductUpdate(
+    storeProductUpdate: store_service.StoreProductUpdateInfo,
+    storeDataType?: store_service.StoreType
+  ): Promise<void> {
+    const fields: APIEmbedField[] = [];
+    if (storeDataType) {
+      const storeType = storeDataTypeToString(storeDataType);
+      fields.push({
+        name: 'StoreType',
+        value: storeType,
+      });
+    }
+
+    fields.push({
+      name: 'Update Info',
+      value: `\`\`\`\n${JSON.stringify(storeProductUpdate, null, 2)}\`\`\``,
+    });
+
+    const embed = new EmbedBuilder({
+      author: {
+        name: this.author,
+        icon_url: this.authorIcon,
+        url: this.authorUrl,
+      },
+      title: 'Ubisoft Connect',
+      description: `A store product revision was updated for productId ${storeProductUpdate.productId}`,
+      color: 15548997, // Red
+      fields,
+    });
+
+    const webhookUrl = this.defaultWebhook;
+
+    this.L.debug({ webhookUrl }, 'Sending store update message to webhook');
+    try {
+      await phin({
+        method: 'POST',
+        url: webhookUrl,
+        data: JSON.stringify({ embeds: [embed] }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch (err) {
+      this.L.error(err);
+    }
+  }
+
+  public async sendStoreProductRemoved(productId: number): Promise<void> {
+    const embed = new EmbedBuilder({
+      author: {
+        name: this.author,
+        icon_url: this.authorIcon,
+        url: this.authorUrl,
+      },
+      title: 'Ubisoft Connect',
+      description: `A store product was removed for productId ${productId}`,
+      color: 15548997, // Red
+    });
+
+    const webhookUrl = this.defaultWebhook;
+
+    this.L.debug({ webhookUrl }, 'Sending store update message to webhook');
+    try {
+      await phin({
+        method: 'POST',
+        url: webhookUrl,
+        data: JSON.stringify({ embeds: [embed] }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch (err) {
+      this.L.error(err);
+    }
+  }
+
+  public async sendStoreProductUpdate(storeProduct: store_service.StoreProduct): Promise<void> {
+    const embed = new EmbedBuilder({
+      author: {
+        name: this.author,
+        icon_url: this.authorIcon,
+        url: this.authorUrl,
+      },
+      title: 'Ubisoft Connect',
+      description: `A store product was updated for productId ${storeProduct.productId}`,
       color: 15548997, // Red
       fields: [
-        { name: 'Update Payload', value: `\`\`\`\n${JSON.stringify(payload.push, null, 2)}\`\`\`` },
+        {
+          name: 'Update Info',
+          value: `\`\`\`\n${JSON.stringify(storeProduct, null, 2)}\`\`\``,
+        },
       ],
     });
 

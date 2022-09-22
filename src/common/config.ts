@@ -12,6 +12,7 @@ export interface Account {
 export interface ConfigFile {
   accounts: Account[];
   discordBotAccount: Account;
+  storeListenerAccount: Account;
   discordBotToken: string;
   discordTestGuild?: string;
   logLevel?: Level;
