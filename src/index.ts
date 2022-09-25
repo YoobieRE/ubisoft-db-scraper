@@ -17,6 +17,7 @@ logger.debug({ config }, 'Found config');
 const discordReporter = new DiscordReporter({
   channelWebhooks: config.discordWebhooks,
   logger,
+  disabled: config.webhookDisabled,
 });
 
 let locked = false;

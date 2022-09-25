@@ -18,6 +18,7 @@ export interface DiscordChannelWebhookList {
 export interface DiscordReporterProps {
   channelWebhooks: DiscordChannelWebhookList;
   logger: Logger;
+  disabled?: boolean;
 }
 
 function documentCleaner<T>(document: mongoose.Document<unknown, unknown, T> & T): T {
@@ -45,6 +46,8 @@ export default class DiscordReporter {
 
   private L: Logger;
 
+  private disabled: boolean;
+
   constructor(props: DiscordReporterProps) {
     if (!props.channelWebhooks.default)
       throw new Error('Discord webhook list must have a "default" webhook');
@@ -52,12 +55,14 @@ export default class DiscordReporter {
     this.launcherWebhook = props.channelWebhooks.launcher;
     this.channelWebhooks = new Map(Object.entries(props.channelWebhooks));
     this.L = props.logger;
+    this.disabled = props.disabled || false;
   }
 
   public async sendProductUpdates(
     newProduct: ProductDocument,
     oldProduct?: ProductDocument
   ): Promise<void> {
+    if (this.disabled) return;
     const cleanNewProduct = documentCleaner(newProduct);
     const cleanOldProduct = oldProduct ? documentCleaner(oldProduct) : undefined;
     const { productId } = cleanNewProduct;
@@ -130,6 +135,7 @@ export default class DiscordReporter {
   }
 
   public async sendLauncherUpdate(newVersion: LauncherVersionDocument): Promise<void> {
+    if (this.disabled) return;
     const embed = new EmbedBuilder({
       author: {
         name: this.author,

@@ -31,6 +31,7 @@ export interface ConfigFile {
   demuxTimeout?: number;
   connectionLog?: boolean;
   discordWebhooks: DiscordChannelWebhookList;
+  webhookDisabled?: boolean;
 }
 
 export const configDir = process.env.CONFIG_DIR || './config';

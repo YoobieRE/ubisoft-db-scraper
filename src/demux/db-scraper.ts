@@ -114,6 +114,8 @@ export default class DbScraper extends (EventEmitter as new () => TypedEmitter<D
               if (product?.configuration) {
                 expandedProduct.configuration = JSON.parse(product.configuration.toString('utf8'));
               }
+              expandedProduct?.associations?.sort((a, b) => a - b);
+              expandedProduct?.ownershipAssociations?.sort((a, b) => a - b);
               return expandedProduct;
             });
             newStoreProductsExpanded.forEach((product) => {
