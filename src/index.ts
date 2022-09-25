@@ -9,7 +9,6 @@ import LauncherScraper from './demux/launcher-scraper';
 import logger from './common/logger';
 import ProductGitArchive from './reports/product-git';
 import DiscordReporter from './reports/discord';
-import ManifestVersionsGit from './reports/manifest-version-git';
 import { DiscordBot } from './bot/discord-bot';
 import StoreListener from './demux/store-listener';
 
@@ -22,7 +21,7 @@ const discordReporter = new DiscordReporter({
 
 let locked = false;
 
-async function scrape(target: 'config' | 'manifest'): Promise<void> {
+async function scrape(target: 'config' | 'store'): Promise<void> {
   if (locked) return;
   locked = true;
 
@@ -44,19 +43,19 @@ async function scrape(target: 'config' | 'manifest'): Promise<void> {
     });
 
     try {
-      const ownershipPool = await demuxPool.getOwnershipPool();
+      const connectionPool = await demuxPool.getConnectionPool();
       const dbScraper = new DbScraper({
-        ownershipPool,
+        connectionPool,
         logger,
         maxProductId: config.maxProductId,
         productIdChunkSize: config.productIdChunkSize,
       });
-      dbScraper.on('configUpdate', discordReporter.sendProductUpdates.bind(discordReporter));
+      dbScraper.on('productUpdate', discordReporter.sendProductUpdates.bind(discordReporter));
 
       if (target === 'config') {
         await dbScraper.scrapeConfigurations();
       } else {
-        await dbScraper.scrapeManifests();
+        await dbScraper.scrapeStore();
       }
 
       // Get launcher data
@@ -79,14 +78,6 @@ async function scrape(target: 'config' | 'manifest'): Promise<void> {
       userEmail: config.gitEmail,
     });
     await productArchive.archive();
-    const manifestVersions = new ManifestVersionsGit({
-      logger,
-      remote: config.manifestVersionsRemote,
-      token: config.githubToken,
-      userName: config.gitUser,
-      userEmail: config.gitEmail,
-    });
-    await manifestVersions.archive();
 
     await mongooseConnection.disconnect();
   } catch (err) {
@@ -125,11 +116,11 @@ async function main(): Promise<void> {
   }
 
   if (config.noSchedule) {
-    await scrape('config');
+    await scrape('store');
   } else {
     logger.info('Started, scheduling scraping jobs');
-    // schedule.scheduleJob('1 * * * *', () => scrape('manifest'));
-    schedule.scheduleJob('0 1/2 * * *', () => scrape('config'));
+    schedule.scheduleJob('1 * * * *', () => scrape('store'));
+    schedule.scheduleJob('0 0 * * *', () => scrape('config'));
   }
 }
 

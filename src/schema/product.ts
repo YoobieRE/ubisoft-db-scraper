@@ -1,11 +1,22 @@
 import mongoose from 'mongoose';
-import { game_configuration } from 'ubisoft-demux';
+import { game_configuration, store_service } from 'ubisoft-demux';
+
+export interface IExpandedStoreProduct
+  extends Omit<Partial<store_service.StoreProduct>, 'configuration'> {
+  configuration?: any;
+}
+
+export interface IStoreTypeProductMap {
+  upsell?: IExpandedStoreProduct;
+  ingame?: IExpandedStoreProduct;
+}
 
 export interface IProduct {
   _id: number;
   productId: number;
   manifest?: string;
   configuration?: game_configuration.Configuration | string;
+  storeProduct?: IStoreTypeProductMap;
   readonly createdAt: Date;
   readonly updatedAt?: Date;
 }
@@ -16,6 +27,7 @@ export const productSchema = new mongoose.Schema<IProduct>(
     productId: { type: Number, required: true },
     manifest: { type: String, required: false },
     configuration: { type: Object, required: false },
+    storeProduct: { type: Object, required: false }, // Defining this schema causes a lot of nonsense around default values and _id's being generated, which breaks the JSON diffing
   },
   {
     timestamps: true, // Generate createdAt and updatedAt timestamps

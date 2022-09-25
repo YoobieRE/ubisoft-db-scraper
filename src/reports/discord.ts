@@ -70,15 +70,10 @@ export default class DiscordReporter {
     const cleanOldProduct = oldProduct ? documentCleaner(oldProduct) : undefined;
     const { productId } = cleanNewProduct;
 
+    // TODO: Remove this after deploy
     const changesObj = diff(cleanOldProduct, cleanNewProduct);
-    const emptyManifests = ['', '                                        '];
-    if (
-      'manifest' in changesObj &&
-      Object.keys(changesObj).length === 1 &&
-      emptyManifests.includes(changesObj.manifest.__old) &&
-      emptyManifests.includes(changesObj.manifest.__new)
-    ) {
-      // If the change is only a switch from ' 'x40 and '' (and vice versa), just skip it
+    if ('storeProduct__added' in changesObj) {
+      // Skip any new storeProduct's due to code change
       return;
     }
 
@@ -121,6 +116,8 @@ export default class DiscordReporter {
     ].filter((name): name is string => Boolean(name));
     const title = allNames[0];
     const alternativeNames = allNames.slice(1);
+
+    // TODO: Add association name list
 
     const fields: APIEmbedField[] = [{ name: 'Changes', value: changes }];
     if (alternativeNames.length) {

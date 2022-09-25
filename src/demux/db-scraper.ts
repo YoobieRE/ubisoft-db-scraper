@@ -1,22 +1,33 @@
-import { game_configuration, ownership_service } from 'ubisoft-demux';
+import { game_configuration, ownership_service, store_service } from 'ubisoft-demux';
 import yaml from 'yaml';
 import deepEqual from 'fast-deep-equal';
 import pRetry from 'p-retry';
 import { Logger } from 'pino';
 import EventEmitter from 'events';
 import TypedEmitter from 'typed-emitter';
-import { Product, ProductDocument } from '../schema/product';
+import {
+  IExpandedStoreProduct,
+  IStoreTypeProductMap,
+  Product,
+  ProductDocument,
+} from '../schema/product';
 import { ProductRevision } from '../schema/product-revision';
 import { chunkArray } from '../common/util';
-import { OwnershipUnit } from './pool';
-import { ManifestVersion } from '../schema/manifest-version';
+import { ConnectionUnit } from './pool';
 
 export type DbScraperEvents = {
-  configUpdate: (newProduct: ProductDocument, oldProduct?: ProductDocument) => void;
+  productUpdate: (newProduct: ProductDocument, oldProduct?: ProductDocument) => void;
+};
+
+export type StoreTypeKey = 'upsell' | 'ingame' | 'unrecognized';
+export const storeTypeNameMap: Record<store_service.StoreType, StoreTypeKey> = {
+  [store_service.StoreType.StoreType_Upsell]: 'upsell',
+  [store_service.StoreType.StoreType_Ingame]: 'ingame',
+  [store_service.StoreType.UNRECOGNIZED]: 'unrecognized',
 };
 
 export interface DbScraperProps {
-  ownershipPool: OwnershipUnit[];
+  connectionPool: ConnectionUnit[];
   logger: Logger;
   maxProductId?: number;
   productIdChunkSize?: number;
@@ -24,7 +35,7 @@ export interface DbScraperProps {
 }
 
 export default class DbScraper extends (EventEmitter as new () => TypedEmitter<DbScraperEvents>) {
-  private ownershipPool: OwnershipUnit[];
+  private connectionPool: ConnectionUnit[];
 
   private maxProductId = 10000;
 
@@ -36,7 +47,7 @@ export default class DbScraper extends (EventEmitter as new () => TypedEmitter<D
 
   constructor(props: DbScraperProps) {
     super();
-    this.ownershipPool = props.ownershipPool;
+    this.connectionPool = props.connectionPool;
     this.maxProductId = props.maxProductId ?? this.maxProductId;
     this.productIdChunkSize = props.productIdChunkSize ?? this.productIdChunkSize;
     this.L = props.logger;
@@ -46,135 +57,169 @@ export default class DbScraper extends (EventEmitter as new () => TypedEmitter<D
     };
   }
 
-  public async scrapeManifests(): Promise<void> {
+  public async scrapeStore(): Promise<void> {
     const productIds = [...Array(this.maxProductId).keys()];
     this.L.info(
-      `Scraping manifests for product IDs ${productIds[0]}-${productIds[productIds.length - 1]}`
+      `Scraping score data for product IDs ${productIds[0]}-${productIds[productIds.length - 1]}`
     );
+    try {
+      const allStoreProductsMap: Record<StoreTypeKey, Map<number, IExpandedStoreProduct>> = {
+        ingame: new Map(),
+        upsell: new Map(),
+        unrecognized: new Map(),
+      };
+      const allCurrentProducts = new Map<number, ProductDocument>();
+      const updatedStoreProducts = new Map<number, IStoreTypeProductMap | undefined>();
+      await Promise.all(
+        chunkArray(productIds, this.productIdChunkSize).map(async (productIdsChunk, index) => {
+          const accountIndex = index % this.connectionPool.length;
+          const { limiter, storeConnection } = this.connectionPool[accountIndex];
+          const firstProductId = productIdsChunk[0];
+          const lastProductId = productIdsChunk[productIdsChunk.length - 1];
 
-    await Promise.all(
-      chunkArray(productIds, this.productIdChunkSize).map(async (productIdsChunk, index) => {
-        const accountIndex = index % this.ownershipPool.length;
-        const { limiter, ownershipConnection } = this.ownershipPool[accountIndex];
-        const firstProductId = productIdsChunk[0];
-        const lastProductId = productIdsChunk[productIdsChunk.length - 1];
-
-        try {
-          const manifestResp = await pRetry(
-            async () =>
-              limiter.add(() => {
-                this.L.info(
-                  { accountIndex },
-                  `Getting manifests and current products for chunk ${firstProductId}-${lastProductId}`
-                );
-                return ownershipConnection.request({
-                  request: {
-                    requestId: 1,
-                    deprecatedGetLatestManifestsReq: {
-                      deprecatedTestConfig: false,
-                      deprecatedProductIds: productIdsChunk,
+          /**
+           * Generic function to get and manipulate store data for both upsell and ingame
+           * @param storeType upsell or ingame enum value
+           * @returns All the products and associated products returned for the batch
+           */
+          const getStoreData = async (
+            storeType: store_service.StoreType
+          ): Promise<IExpandedStoreProduct[]> => {
+            const typeName = storeTypeNameMap[storeType];
+            const storeDataResp = await pRetry(
+              async () =>
+                limiter.add(() => {
+                  this.L.debug(
+                    { accountIndex },
+                    `Getting ${typeName} store data and current products for chunk ${firstProductId}-${lastProductId}`
+                  );
+                  return storeConnection.request({
+                    request: {
+                      requestId: 1,
+                      getDataReq: {
+                        storeDataType: storeType,
+                        productId: productIdsChunk,
+                      },
                     },
-                  },
-                });
-              }),
-            this.retryOptions
-          );
+                  });
+                }),
+              this.retryOptions
+            );
+            const newStoreProducts = storeDataResp.response?.getDataRsp?.products || [];
+            this.L.debug(`Received ${newStoreProducts.length} ${typeName} store products`);
+            const newStoreProductsExpanded = newStoreProducts.map((product) => {
+              const expandedProduct: IExpandedStoreProduct = (
+                product as store_service.StoreProduct & protobuf.Message
+              ).toJSON();
+              if (product?.configuration) {
+                expandedProduct.configuration = JSON.parse(product.configuration.toString('utf8'));
+              }
+              return expandedProduct;
+            });
+            newStoreProductsExpanded.forEach((product) => {
+              if (!product.productId) return;
+              allStoreProductsMap[typeName].set(product.productId, product);
+            });
+            return newStoreProductsExpanded;
+          };
+
+          await Promise.all([
+            getStoreData(store_service.StoreType.StoreType_Upsell),
+            getStoreData(store_service.StoreType.StoreType_Ingame),
+          ]);
           const currentProducts = await Product.find({
             _id: { $gte: firstProductId, $lte: lastProductId },
           });
-          const newManifests =
-            manifestResp.response?.deprecatedGetLatestManifestsRsp?.manifests || [];
-          this.L.debug(
-            `Received ${newManifests.length} new manifests and ${currentProducts.length} current products`
-          );
-          const currentProductsMap = new Map(
-            currentProducts.map((product) => [product._id, product])
-          );
+          this.L.debug(`Received ${currentProducts.length} current products`);
+          currentProducts.forEach((currentProduct) => {
+            allCurrentProducts.set(currentProduct._id, currentProduct);
+          });
 
-          // TODO: updateManifestHistory function
-          await Promise.all(
-            newManifests.map(async (newManifest) => {
-              if (
-                newManifest.result !==
-                ownership_service.DeprecatedGetLatestManifestsRsp_Manifest_Result.Result_Success
-              ) {
-                // I couldn't find any non-success manifest results that had a configuration, so they're not worth storing
-                // If they do get a successful result in the future, they will be picked up
-                this.L.trace(
-                  { productId: newManifest.productId, result: newManifest.result },
-                  'Product ID does not exist'
-                );
-                return;
+          productIdsChunk.forEach((productId) => {
+            const currentProduct = allCurrentProducts.get(productId);
+            const storeProductMapCreation: IStoreTypeProductMap = {};
+
+            Object.keys(allStoreProductsMap).forEach((storeTypeName) => {
+              const storeProduct =
+                allStoreProductsMap[storeTypeName as StoreTypeKey].get(productId);
+              if (storeProduct) {
+                storeProductMapCreation[storeTypeName as keyof IStoreTypeProductMap] = storeProduct;
               }
+            });
 
-              let currentProduct = currentProductsMap.get(newManifest.productId);
-              if (!currentProduct || currentProduct.manifest !== newManifest.manifest) {
-                currentProduct = await this.updateProduct(
-                  newManifest.productId,
-                  currentProduct,
-                  newManifest.manifest
-                );
-              }
+            // Set to undefined if no keys
+            const storeProductMap = Object.keys(storeProductMapCreation).length
+              ? storeProductMapCreation
+              : undefined;
+            const currentStoreProduct = currentProduct?.toObject().storeProduct;
+            if (
+              (!currentProduct && storeProductMap) ||
+              !deepEqual(currentStoreProduct, storeProductMap)
+            ) {
+              // Mark productId as updated
+              this.L.debug(`Detected change in store productId ${productId}`);
+              updatedStoreProducts.set(productId, storeProductMap);
 
-              // After we have the latest config in the product, we can use its digital
-              // distribution version to update the manifest version.
-              const manifestVersionExists = await ManifestVersion.exists({
-                manifest: newManifest.manifest,
-                productId: newManifest.productId,
-              });
-              if (!manifestVersionExists) {
-                this.L.debug('Manifest does not exist');
-                const digitalDistributionVersion =
-                  typeof currentProduct?.configuration === 'object'
-                    ? currentProduct?.configuration?.root?.digital_distribution?.version
-                    : undefined;
-
-                const newManifestVersion = new ManifestVersion({
-                  productId: newManifest.productId,
-                  manifest: newManifest.manifest,
-                  releaseDate: new Date(),
-                  digitalDistributionVersion,
+              // Mark all associated products as updated
+              if (storeProductMap) {
+                Object.values(storeProductMap).forEach((storeProduct?: IExpandedStoreProduct) => {
+                  [storeProduct?.associations, storeProduct?.ownershipAssociations].forEach(
+                    (associationList) => {
+                      if (associationList?.length) {
+                        associationList.forEach((associatedId) => {
+                          if (
+                            !updatedStoreProducts.get(associatedId) &&
+                            associatedId < this.maxProductId
+                          ) {
+                            updatedStoreProducts.set(associatedId, undefined);
+                          }
+                        });
+                      }
+                    }
+                  );
                 });
-                this.L.info(
-                  {
-                    productId: newManifestVersion.productId,
-                    manifest: newManifestVersion.manifest,
-                    digitalDistributionVersion: newManifestVersion.digitalDistributionVersion,
-                  },
-                  'Inserting new manifest version'
-                );
-                await newManifestVersion.save();
-              } else {
-                this.L.trace('Manifest version already exists');
               }
-            })
-          );
-        } catch (err) {
-          this.L.error(err);
-        }
-      })
-    );
+            }
+          });
+        })
+      );
+
+      this.L.info(`Found ${updatedStoreProducts.size} potentially updated store products`);
+
+      await Promise.all(
+        Array.from(updatedStoreProducts.entries()).map(async ([productId, storeProductMap]) => {
+          const currentProduct = allCurrentProducts.get(productId);
+          // TODO: remove any product IDs above this.maxProductId
+          return this.updateProduct(productId, currentProduct, storeProductMap);
+        })
+      );
+    } catch (err) {
+      this.L.error(err);
+    }
   }
 
   // eslint-disable-next-line consistent-return
   public async updateProduct(
     productId: number,
     currentProduct?: ProductDocument | null,
-    newManifest?: string
+    newStoreProduct?: IStoreTypeProductMap
   ): Promise<ProductDocument | undefined> {
-    const accountIndex = productId % this.ownershipPool.length;
-    const { limiter, ownershipConnection } = this.ownershipPool[accountIndex];
+    const accountIndex = productId % this.connectionPool.length;
+    const { limiter, ownershipConnection } = this.connectionPool[accountIndex];
     try {
       const configResp = await pRetry(
         async () =>
           limiter.add(() => {
             if (productId % 50 === 0) {
               this.L.debug(
-                { productId, newManifest, accountIndex },
+                { productId, newStoreProduct, accountIndex },
                 'Getting latest product config'
               );
             }
-            this.L.trace({ productId, newManifest, accountIndex }, 'Getting latest product config');
+            this.L.trace(
+              { productId, newStoreProduct, accountIndex },
+              'Getting latest product config'
+            );
             return ownershipConnection.request({
               request: {
                 requestId: 1,
@@ -192,7 +237,7 @@ export default class DbScraper extends (EventEmitter as new () => TypedEmitter<D
         configResp.response?.getProductConfigRsp?.result !==
           ownership_service.GetProductConfigRsp_Result.Result_Success &&
         !currentProduct &&
-        newManifest === undefined
+        newStoreProduct === undefined
       ) {
         this.L.trace(
           { productId, result: configResp.response?.getProductConfigRsp?.result },
@@ -222,19 +267,16 @@ export default class DbScraper extends (EventEmitter as new () => TypedEmitter<D
         const newProduct = new Product({
           _id: productId,
           productId,
-          manifest: newManifest,
+          storeProduct: newStoreProduct,
           configuration: configParsed,
         });
         this.L.trace({ newProduct }, 'inserting new product');
         await newProduct.save();
-        this.emit('configUpdate', newProduct);
+        this.emit('productUpdate', newProduct);
         return newProduct;
       }
 
-      if (
-        (newManifest !== undefined && currentProduct.manifest !== newManifest) ||
-        !deepEqual(currentProduct.configuration, configParsed)
-      ) {
+      if (newStoreProduct || !deepEqual(currentProduct.configuration, configParsed)) {
         // If there is a change in the document
         this.L.info({ productId }, 'A change was detected. Updating the product');
         // Save the old document
@@ -242,12 +284,12 @@ export default class DbScraper extends (EventEmitter as new () => TypedEmitter<D
           ...currentProduct.toObject(),
           _id: undefined,
         });
-        // Don't overwrite existing manifest with undefined
-        if (newManifest !== undefined) currentProduct.set({ manifest: newManifest });
+        // Don't overwrite existing storeProduct with undefined
+        if (newStoreProduct) currentProduct.set({ storeProduct: newStoreProduct });
         currentProduct.set({ configuration: configParsed });
         // Update the document
         await currentProduct.save();
-        this.emit('configUpdate', currentProduct, oldProduct);
+        this.emit('productUpdate', currentProduct, oldProduct);
         return currentProduct;
       }
     } catch (err) {

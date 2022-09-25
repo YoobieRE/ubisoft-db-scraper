@@ -1,23 +1,18 @@
 import PQueue from 'p-queue';
-import {
-  UbisoftDemux,
-  ownership_service,
-  UbiServicesApi,
-  CreateSessionSuccessResponse,
-} from 'ubisoft-demux';
+import { UbisoftDemux, ownership_service, store_service } from 'ubisoft-demux';
 import { DemuxConnection } from 'ubisoft-demux/dist/src/demux-connection';
-import * as otp from 'otpauth';
 import { Logger } from 'pino';
-import { readRememberMeTicket, writeRememberMeTicket } from '../common/cache';
 import { Account } from '../common/config';
+import { UbiTicketManager } from './ticket-manager';
 
 export interface DemuxUnit {
   demux: UbisoftDemux;
   limiter: PQueue;
 }
 
-export interface OwnershipUnit extends DemuxUnit {
+export interface ConnectionUnit extends DemuxUnit {
   ownershipConnection: DemuxConnection<ownership_service.Upstream, ownership_service.Downstream>;
+  storeConnection: DemuxConnection<store_service.Upstream, store_service.Downstream>;
 }
 
 export interface DemuxPoolProps {
@@ -48,44 +43,12 @@ export default class DemuxPool {
   public async getDemuxPool(): Promise<DemuxUnit[]> {
     if (this.demuxPool) return this.demuxPool;
 
-    const ubiServices = new UbiServicesApi();
     this.demuxPool = await Promise.all(
       this.accounts.map(async ({ email, password, totp }) => {
-        // TODO: switch to UbiTicketManager
-        let rememberMeTicket: string | null | undefined = await readRememberMeTicket(email);
-        let ticket: string;
-
-        if (rememberMeTicket) {
-          this.L.debug({ email }, 'Logging in with rememberMeTicket');
-          // obtain new ticket, update rememberMeTicket
-          const loginResp = await ubiServices.loginRememberMe(rememberMeTicket);
-          ticket = loginResp.ticket;
-          rememberMeTicket = loginResp.rememberMeTicket;
-        } else {
-          this.L.debug({ email }, 'Logging in with email/password');
-          if (!email || !password) throw new Error('Email and password are required');
-
-          // Attempt login, check if 2fa is required
-          const loginResp = await ubiServices.login(email, password);
-
-          if (loginResp.twoFactorAuthenticationTicket) {
-            this.L.trace({ email }, '2fa required');
-            if (!totp) throw new Error(`TOTP secret is required for ${email}`);
-            const totpGen = new otp.TOTP({ secret: otp.Secret.fromBase32(totp) });
-            this.L.debug({ email }, 'Logging in with 2fa code');
-            const mfaLoginResp = await ubiServices.login2fa(
-              loginResp.twoFactorAuthenticationTicket,
-              totpGen.generate()
-            );
-            ticket = mfaLoginResp.ticket;
-            rememberMeTicket = mfaLoginResp.rememberMeTicket;
-          } else {
-            ticket = (loginResp as CreateSessionSuccessResponse).ticket;
-            rememberMeTicket = (loginResp as CreateSessionSuccessResponse).rememberMeTicket;
-          }
-        }
-        // Cache rememberMeTicket
-        if (rememberMeTicket) await writeRememberMeTicket(rememberMeTicket, email);
+        const ticketManager = new UbiTicketManager({
+          account: { email, password, totp },
+          logger: this.L,
+        });
 
         const demux = new UbisoftDemux({ timeout: 1000 });
         this.L.debug({ email }, 'Authenticating with Demux');
@@ -95,7 +58,7 @@ export default class DemuxPool {
             clientId: 'uplay_pc',
             sendKeepAlive: false,
             token: {
-              ubiTicket: ticket,
+              ubiTicket: await ticketManager.getTicket(),
             },
           },
         });
@@ -112,7 +75,7 @@ export default class DemuxPool {
     return this.demuxPool;
   }
 
-  public async getOwnershipPool(): Promise<OwnershipUnit[]> {
+  public async getConnectionPool(): Promise<ConnectionUnit[]> {
     const demuxPool = await this.getDemuxPool();
     return Promise.all(
       demuxPool.map(async ({ demux, limiter }, index) => {
@@ -131,9 +94,23 @@ export default class DemuxPool {
           },
         });
 
+        const storeConnection = await demux.openConnection('store_service');
+
+        this.L.debug({ accountIndex: index }, 'Initializing store connection');
+        await storeConnection.request({
+          request: {
+            requestId: 1,
+            initializeReq: {
+              protoVersion: 7,
+              useStaging: false,
+            },
+          },
+        });
+
         return {
           demux,
           ownershipConnection,
+          storeConnection,
           limiter,
         };
       })
