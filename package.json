@@ -42,6 +42,7 @@
   "dependencies": {
     "@discordjs/builders": "^1.1.0",
     "@discordjs/rest": "^1.1.0",
+    "@isaacs/ttlcache": "^1.2.0",
     "debug": "^4.3.4",
     "discord-api-types": "^0.37.8",
     "discord.js": "^14.3.0",

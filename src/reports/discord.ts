@@ -4,9 +4,10 @@ import { diffString, diff } from 'json-diff';
 import mongoose from 'mongoose';
 import phin from 'phin';
 import { Logger } from 'pino';
-import { game_configuration, store_service } from 'ubisoft-demux';
+import { game_configuration } from 'ubisoft-demux';
+import pRetry from 'p-retry';
 import { LauncherVersionDocument } from '../schema/launcher-version';
-import { ProductDocument } from '../schema/product';
+import { IExpandedStoreProduct, IProduct, Product, ProductDocument } from '../schema/product';
 
 export interface DiscordChannelWebhookList {
   default: string;
@@ -29,15 +30,6 @@ function documentCleaner<T>(document: mongoose.Document<unknown, unknown, T> & T
   return cleanDoc;
 }
 
-function storeDataTypeToString(storeDataType: store_service.StoreType): string {
-  if (storeDataType === store_service.StoreType.StoreType_Ingame) {
-    return 'Ingame';
-  }
-  if (storeDataType === store_service.StoreType.StoreType_Upsell) {
-    return 'Upsell';
-  }
-  return 'Unknown';
-}
 export default class DiscordReporter {
   private channelWebhooks: Map<string, string>;
 
@@ -92,36 +84,31 @@ export default class DiscordReporter {
 
     const color = isNew ? 5763719 : 5793266; // Green // Blurple
 
-    const productRoot = (cleanNewProduct.configuration as game_configuration.Configuration)?.root;
-    const viableImages = [
-      productRoot?.thumb_image,
-      productRoot?.icon_image,
-      productRoot?.splash_image,
-      productRoot?.logo_image,
-    ];
-    const thumbnailFileName = viableImages.find((image) => image?.includes('.'));
+    const thumbnailUrl = this.getBestProductImageUrl(cleanNewProduct);
     let thumbnailEmbed: APIEmbedThumbnail | undefined;
-    if (thumbnailFileName) {
-      thumbnailEmbed = {
-        url: `http://static3.cdn.ubi.com/orbit/uplay_launcher_3_0/assets/${thumbnailFileName}`,
-      };
-    }
+    if (thumbnailUrl) thumbnailEmbed = { url: thumbnailUrl };
 
-    const allNames = [
-      (cleanNewProduct.configuration as game_configuration.Configuration)?.root?.name,
-      (cleanNewProduct.configuration as game_configuration.Configuration)?.root?.installer
-        ?.game_identifier,
-      (cleanNewProduct.configuration as game_configuration.Configuration)?.root?.sort_string,
-      (cleanNewProduct.configuration as game_configuration.Configuration)?.root?.display_name,
-    ].filter((name): name is string => Boolean(name));
-    const title = allNames[0];
-    const alternativeNames = allNames.slice(1);
-
-    // TODO: Add association name list
+    const { name: title, altNames } = this.getBestProductName(cleanNewProduct);
 
     const fields: APIEmbedField[] = [{ name: 'Changes', value: changes }];
-    if (alternativeNames.length) {
-      fields.unshift({ name: 'Other Names', value: alternativeNames.join('; ') });
+
+    const associatedProducts = await this.getAssociatedProducts(cleanNewProduct);
+    const associatedNameSet = new Set<string>();
+    associatedProducts.forEach((p) => {
+      const { name } = this.getBestProductName(p);
+      if (name) associatedNameSet.add(name);
+    });
+    if (associatedNameSet.size) {
+      const listString = Array.from(associatedNameSet).reduce((acc, curr) => {
+        const separator = '; ';
+        if (acc.length + separator.length + curr.length > 1024) return acc;
+        return acc + separator + curr;
+      });
+      fields.unshift({ name: 'Associated Names', value: listString });
+    }
+
+    if (altNames.length) {
+      fields.unshift({ name: 'Other Names', value: altNames.join('; ') });
     }
 
     const embed = new EmbedBuilder({
@@ -139,17 +126,7 @@ export default class DiscordReporter {
 
     const webhookUrl = this.channelWebhooks.get(productId.toString()) || this.defaultWebhook;
 
-    this.L.debug({ webhookUrl, productId }, 'Sending product update message to webhook');
-    try {
-      await phin({
-        method: 'POST',
-        url: webhookUrl,
-        data: JSON.stringify({ embeds: [embed] }),
-        headers: { 'Content-Type': 'application/json' },
-      });
-    } catch (err) {
-      this.L.error(err);
-    }
+    await this.sendDiscordMessage(webhookUrl, embed);
   }
 
   public async sendLauncherUpdate(newVersion: LauncherVersionDocument): Promise<void> {
@@ -169,162 +146,70 @@ export default class DiscordReporter {
     });
 
     const webhookUrl = this.launcherWebhook || this.defaultWebhook;
+    await this.sendDiscordMessage(webhookUrl, embed);
+  }
 
+  private async sendDiscordMessage(webhookUrl: string, embed: EmbedBuilder): Promise<void> {
     this.L.debug({ webhookUrl }, 'Sending launcher update message to webhook');
     try {
-      await phin({
-        method: 'POST',
-        url: webhookUrl,
-        data: JSON.stringify({ embeds: [embed] }),
-        headers: { 'Content-Type': 'application/json' },
-      });
-    } catch (err) {
-      this.L.error(err);
-    }
-  }
-
-  public async sendStoreRevisionProductRemoved(
-    productId: number,
-    storeDataType?: store_service.StoreType
-  ): Promise<void> {
-    const fields: APIEmbedField[] = [];
-    if (storeDataType) {
-      const storeType = storeDataTypeToString(storeDataType);
-      fields.push({
-        name: 'StoreType',
-        value: storeType,
-      });
-    }
-
-    const embed = new EmbedBuilder({
-      author: {
-        name: this.author,
-        icon_url: this.authorIcon,
-        url: this.authorUrl,
-      },
-      title: 'Ubisoft Connect',
-      description: `A store revision product was removed for productId ${productId}`,
-      color: 15548997, // Red
-      fields,
-    });
-
-    const webhookUrl = this.defaultWebhook;
-
-    this.L.debug({ webhookUrl }, 'Sending store update message to webhook');
-    try {
-      await phin({
-        method: 'POST',
-        url: webhookUrl,
-        data: JSON.stringify({ embeds: [embed] }),
-        headers: { 'Content-Type': 'application/json' },
-      });
-    } catch (err) {
-      this.L.error(err);
-    }
-  }
-
-  public async sendStoreRevisionProductUpdate(
-    storeProductUpdate: store_service.StoreProductUpdateInfo,
-    storeDataType?: store_service.StoreType
-  ): Promise<void> {
-    const fields: APIEmbedField[] = [];
-    if (storeDataType) {
-      const storeType = storeDataTypeToString(storeDataType);
-      fields.push({
-        name: 'StoreType',
-        value: storeType,
-      });
-    }
-
-    fields.push({
-      name: 'Update Info',
-      value: `\`\`\`\n${JSON.stringify(storeProductUpdate, null, 2)}\`\`\``,
-    });
-
-    const embed = new EmbedBuilder({
-      author: {
-        name: this.author,
-        icon_url: this.authorIcon,
-        url: this.authorUrl,
-      },
-      title: 'Ubisoft Connect',
-      description: `A store product revision was updated for productId ${storeProductUpdate.productId}`,
-      color: 15548997, // Red
-      fields,
-    });
-
-    const webhookUrl = this.defaultWebhook;
-
-    this.L.debug({ webhookUrl }, 'Sending store update message to webhook');
-    try {
-      await phin({
-        method: 'POST',
-        url: webhookUrl,
-        data: JSON.stringify({ embeds: [embed] }),
-        headers: { 'Content-Type': 'application/json' },
-      });
-    } catch (err) {
-      this.L.error(err);
-    }
-  }
-
-  public async sendStoreProductRemoved(productId: number): Promise<void> {
-    const embed = new EmbedBuilder({
-      author: {
-        name: this.author,
-        icon_url: this.authorIcon,
-        url: this.authorUrl,
-      },
-      title: 'Ubisoft Connect',
-      description: `A store product was removed for productId ${productId}`,
-      color: 15548997, // Red
-    });
-
-    const webhookUrl = this.defaultWebhook;
-
-    this.L.debug({ webhookUrl }, 'Sending store update message to webhook');
-    try {
-      await phin({
-        method: 'POST',
-        url: webhookUrl,
-        data: JSON.stringify({ embeds: [embed] }),
-        headers: { 'Content-Type': 'application/json' },
-      });
-    } catch (err) {
-      this.L.error(err);
-    }
-  }
-
-  public async sendStoreProductUpdate(storeProduct: store_service.StoreProduct): Promise<void> {
-    const embed = new EmbedBuilder({
-      author: {
-        name: this.author,
-        icon_url: this.authorIcon,
-        url: this.authorUrl,
-      },
-      title: 'Ubisoft Connect',
-      description: `A store product was updated for productId ${storeProduct.productId}`,
-      color: 15548997, // Red
-      fields: [
+      await pRetry(
+        () =>
+          phin({
+            method: 'POST',
+            url: webhookUrl,
+            data: JSON.stringify({ embeds: [embed] }),
+            headers: { 'Content-Type': 'application/json' },
+          }),
         {
-          name: 'Update Info',
-          value: `\`\`\`\n${JSON.stringify(storeProduct, null, 2)}\`\`\``,
-        },
-      ],
-    });
-
-    const webhookUrl = this.defaultWebhook;
-
-    this.L.debug({ webhookUrl }, 'Sending store update message to webhook');
-    try {
-      await phin({
-        method: 'POST',
-        url: webhookUrl,
-        data: JSON.stringify({ embeds: [embed] }),
-        headers: { 'Content-Type': 'application/json' },
-      });
+          retries: 5,
+          onFailedAttempt: (err) => this.L.debug(err),
+        }
+      );
     } catch (err) {
       this.L.error(err);
     }
+  }
+
+  private async getAssociatedProducts(product: IProduct): Promise<IProduct[]> {
+    const associatedProductIds = new Set<number>();
+    if (product.storeProduct) {
+      const storeProducts: IExpandedStoreProduct[] = Object.values(product.storeProduct);
+      storeProducts.forEach((storeProduct) => {
+        storeProduct.associations?.forEach((id) => associatedProductIds.add(id));
+        storeProduct.ownershipAssociations?.forEach((id) => associatedProductIds.add(id));
+      });
+    }
+
+    this.L.debug({ associatedProductIds }, 'Looking up associated products');
+    const currentProducts = await Product.find({ _id: { $in: Array.from(associatedProductIds) } });
+    return currentProducts;
+  }
+
+  private getBestProductName(product: IProduct): { name?: string; altNames: string[] } {
+    const allNames = [
+      (product.configuration as game_configuration.Configuration)?.root?.name,
+      (product.configuration as game_configuration.Configuration)?.root?.installer?.game_identifier,
+      (product.configuration as game_configuration.Configuration)?.root?.sort_string,
+      (product.configuration as game_configuration.Configuration)?.root?.display_name,
+    ].filter((name): name is string => Boolean(name));
+    this.L.trace({ allNames }, 'getting best name from all names');
+    const name = allNames[0];
+    const altNames = allNames.slice(1);
+    return { name, altNames };
+  }
+
+  private getBestProductImageUrl(product: IProduct): string | undefined {
+    const productRoot = (product.configuration as game_configuration.Configuration)?.root;
+    const viableImages = [
+      productRoot?.thumb_image,
+      productRoot?.icon_image,
+      productRoot?.splash_image,
+      productRoot?.logo_image,
+    ];
+    this.L.trace({ viableImages }, 'getting best image from all images');
+
+    const thumbnailFileName = viableImages.find((image) => image?.includes('.'));
+    if (!thumbnailFileName) return undefined;
+    return `http://static3.cdn.ubi.com/orbit/uplay_launcher_3_0/assets/${thumbnailFileName}`;
   }
 }

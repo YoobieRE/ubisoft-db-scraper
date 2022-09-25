@@ -3,6 +3,7 @@ import EventEmitter from 'events';
 import TypedEmitter from 'typed-emitter';
 import { store_service, UbisoftDemux } from 'ubisoft-demux';
 import type { Message } from 'protobufjs';
+import TTLCache from '@isaacs/ttlcache';
 import { Account } from '../common/config';
 import { UbiTicketManager } from './ticket-manager';
 
@@ -14,6 +15,7 @@ export type StoreListenerEvents = {
     storeProductUpdate: store_service.StoreProductUpdateInfo,
     storeDataType?: store_service.StoreType
   ) => void;
+  debouncedProductUpdate: (productId: number) => void;
 };
 
 export interface StoreListenerProps {
@@ -27,6 +29,8 @@ export default class StoreListener extends (EventEmitter as new () => TypedEmitt
   private demux = new UbisoftDemux();
 
   private ticketManager: UbiTicketManager;
+
+  private productUpdateCache = new TTLCache({ ttl: 1000 });
 
   constructor(props: StoreListenerProps) {
     super();
@@ -70,12 +74,16 @@ export default class StoreListener extends (EventEmitter as new () => TypedEmitt
     if ('storeUpdate' in push && push.storeUpdate) {
       const { storeUpdate } = push;
       if (storeUpdate.removedProducts?.length) {
-        storeUpdate.removedProducts.forEach((productId) =>
-          this.emit('storeProductRemoved', productId)
-        );
+        storeUpdate.removedProducts.forEach((productId) => {
+          this.emit('storeProductRemoved', productId);
+          this.emitGenericProductUpdate(productId);
+        });
       }
       if (storeUpdate.storeProducts?.length) {
-        storeUpdate.storeProducts.forEach((product) => this.emit('storeProductUpdate', product));
+        storeUpdate.storeProducts.forEach((product) => {
+          this.emit('storeProductUpdate', product);
+          this.emitGenericProductUpdate(product.productId);
+        });
       }
     }
 
@@ -83,15 +91,24 @@ export default class StoreListener extends (EventEmitter as new () => TypedEmitt
       const { revisionsUpdatedPush } = push;
       const { storeDataType } = revisionsUpdatedPush; // storeDataType can be undefined (maybe?)
       if (revisionsUpdatedPush.removedProducts?.length) {
-        revisionsUpdatedPush.removedProducts.forEach((productId) =>
-          this.emit('revisionProductRemoved', productId, storeDataType)
-        );
+        revisionsUpdatedPush.removedProducts.forEach((productId) => {
+          this.emit('revisionProductRemoved', productId, storeDataType);
+          this.emitGenericProductUpdate(productId);
+        });
       }
       if (revisionsUpdatedPush.updateInfo?.length) {
-        revisionsUpdatedPush.updateInfo.forEach((productInfo) =>
-          this.emit('revisionProductUpdate', productInfo, storeDataType)
-        );
+        revisionsUpdatedPush.updateInfo.forEach((productInfo) => {
+          this.emit('revisionProductUpdate', productInfo, storeDataType);
+          this.emitGenericProductUpdate(productInfo.productId);
+        });
       }
+    }
+  }
+
+  private emitGenericProductUpdate(productId: number): void {
+    if (!this.productUpdateCache.has(productId)) {
+      this.productUpdateCache.set(productId, productId);
+      this.emit('debouncedProductUpdate', productId);
     }
   }
 
