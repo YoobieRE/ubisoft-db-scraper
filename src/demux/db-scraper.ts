@@ -105,14 +105,15 @@ export default class DbScraper extends (EventEmitter as new () => TypedEmitter<D
                 }),
               this.retryOptions
             );
-            const newStoreProducts = storeDataResp.response?.getDataRsp?.products || [];
+            const newStoreProducts: IExpandedStoreProduct[] =
+              storeDataResp.toJSON().response?.getDataRsp?.products || [];
             this.L.debug(`Received ${newStoreProducts.length} ${typeName} store products`);
             const newStoreProductsExpanded = newStoreProducts.map((product) => {
-              const expandedProduct: IExpandedStoreProduct = (
-                product as store_service.StoreProduct & protobuf.Message
-              ).toJSON();
+              const expandedProduct = product;
               if (product?.configuration) {
-                expandedProduct.configuration = JSON.parse(product.configuration.toString('utf8'));
+                expandedProduct.configuration = JSON.parse(
+                  Buffer.from(product.configuration, 'base64').toString('utf8')
+                );
               }
               expandedProduct?.associations?.sort((a, b) => a - b);
               expandedProduct?.ownershipAssociations?.sort((a, b) => a - b);
