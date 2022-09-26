@@ -1,6 +1,6 @@
 import { EmbedBuilder } from '@discordjs/builders';
 import type { APIEmbedField, APIEmbedThumbnail } from 'discord-api-types/v10';
-import { diffString, diff } from 'json-diff';
+import { diffString } from 'json-diff';
 import mongoose from 'mongoose';
 import phin from 'phin';
 import { Logger } from 'pino';
@@ -66,13 +66,6 @@ export default class DiscordReporter {
     const cleanNewProduct = documentCleaner(newProduct);
     const cleanOldProduct = oldProduct ? documentCleaner(oldProduct) : undefined;
     const { productId } = cleanNewProduct;
-
-    // TODO: Remove this after deploy
-    const changesObj = diff(cleanOldProduct, cleanNewProduct);
-    if ('storeProduct__added' in changesObj) {
-      // Skip any new storeProduct's due to code change
-      return;
-    }
 
     let changes = diffString(cleanOldProduct, cleanNewProduct, {
       color: false,
