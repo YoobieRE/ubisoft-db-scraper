@@ -181,6 +181,7 @@ export default class DiscordReporter {
         storeProduct.ownershipAssociations?.forEach((id) => associatedProductIds.add(id));
       });
     }
+    if (!associatedProductIds.size) return [];
     const associatedProductIdsArray = Array.from(associatedProductIds);
     this.L.debug({ associatedProductIdsArray }, 'Looking up associated products');
     try {
