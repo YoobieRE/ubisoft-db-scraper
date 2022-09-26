@@ -63,6 +63,7 @@ export default class DiscordReporter {
     oldProduct?: ProductDocument
   ): Promise<void> {
     if (this.disabled) return;
+    this.L.debug({ productId: newProduct.productId }, 'Creating Discord product update');
     const cleanNewProduct = documentCleaner(newProduct);
     const cleanOldProduct = oldProduct ? documentCleaner(oldProduct) : undefined;
     const { productId } = cleanNewProduct;
@@ -102,7 +103,7 @@ export default class DiscordReporter {
         if (acc.length + separator.length + curr.length > 1024) return acc;
         return acc + separator + curr;
       });
-      fields.unshift({ name: 'Associated Names', value: listString });
+      fields.unshift({ name: 'Associated Products', value: listString });
     }
 
     if (altNames.length) {
@@ -129,6 +130,8 @@ export default class DiscordReporter {
 
   public async sendLauncherUpdate(newVersion: LauncherVersionDocument): Promise<void> {
     if (this.disabled) return;
+    this.L.debug({ newVersion }, 'Creating Discord launcher update');
+
     const embed = new EmbedBuilder({
       author: {
         name: this.author,
@@ -149,7 +152,7 @@ export default class DiscordReporter {
   }
 
   private async sendDiscordMessage(webhookUrl: string, embed: EmbedBuilder): Promise<void> {
-    this.L.debug({ webhookUrl }, 'Sending launcher update message to webhook');
+    this.L.debug({ webhookUrl }, 'Sending message to webhook');
     try {
       await pRetry(
         () =>
@@ -178,10 +181,15 @@ export default class DiscordReporter {
         storeProduct.ownershipAssociations?.forEach((id) => associatedProductIds.add(id));
       });
     }
-
-    this.L.debug({ associatedProductIds }, 'Looking up associated products');
-    const currentProducts = await Product.find({ _id: { $in: Array.from(associatedProductIds) } });
-    return currentProducts;
+    const associatedProductIdsArray = Array.from(associatedProductIds);
+    this.L.debug({ associatedProductIdsArray }, 'Looking up associated products');
+    try {
+      const currentProducts = await Product.find({ _id: { $in: associatedProductIdsArray } });
+      return currentProducts;
+    } catch (err) {
+      this.L.error(err);
+      return [];
+    }
   }
 
   private getBestProductName(product: IProduct): { name?: string; altNames: string[] } {
