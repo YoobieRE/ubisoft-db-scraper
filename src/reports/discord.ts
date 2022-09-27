@@ -1,6 +1,6 @@
 import { EmbedBuilder } from '@discordjs/builders';
 import type { APIEmbedField, APIEmbedThumbnail } from 'discord-api-types/v10';
-import { diffString, diff } from 'json-diff';
+import { diffString, diff, DiffStringOptions } from 'json-diff';
 import mongoose from 'mongoose';
 import phin from 'phin';
 import { Logger } from 'pino';
@@ -89,7 +89,8 @@ export default class DiscordReporter {
 
     let changes = diffString(cleanOldProduct, cleanNewProduct, {
       color: false,
-    });
+      maxElisions: 1,
+    } as DiffStringOptions); // TODO: waiting on: https://github.com/DefinitelyTyped/DefinitelyTyped/pull/62173
 
     if (changes.length > 1024 - 7) changes = changes.substring(0, 1024 - 7);
 
