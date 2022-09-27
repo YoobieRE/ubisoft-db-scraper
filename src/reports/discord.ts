@@ -1,6 +1,6 @@
 import { EmbedBuilder } from '@discordjs/builders';
 import type { APIEmbedField, APIEmbedThumbnail } from 'discord-api-types/v10';
-import { diffString } from 'json-diff';
+import { diffString, diff } from 'json-diff';
 import mongoose from 'mongoose';
 import phin from 'phin';
 import { Logger } from 'pino';
@@ -67,6 +67,25 @@ export default class DiscordReporter {
     const cleanNewProduct = documentCleaner(newProduct);
     const cleanOldProduct = oldProduct ? documentCleaner(oldProduct) : undefined;
     const { productId } = cleanNewProduct;
+
+    // If the change is only a switch in storePartner, just skip it
+    const changesObj = diff(cleanOldProduct, cleanNewProduct);
+    this.L.debug({ changesObj }, 'Product diffs object');
+    if (
+      changesObj && // there are changes
+      'storeProduct' in changesObj && // and storeProduct is in the changes object
+      Object.keys(changesObj).length === 1 && // and storeProduct is the only change
+      Object.values(changesObj.storeProduct).every(
+        // every store type product (ingame/upsell)
+        (storeProduct: any) =>
+          'storePartner' in storeProduct && // should have a storePartner key
+          Object.keys(storeProduct).length === 1 && // and storePartner is the only change
+          storeProduct.storePartner.__old && // and it's a change in value (not a new value)
+          storeProduct.storePartner.__new
+      )
+    ) {
+      return; // skip
+    }
 
     let changes = diffString(cleanOldProduct, cleanNewProduct, {
       color: false,
