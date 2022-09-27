@@ -1,5 +1,4 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { PermissionsBitField } from 'discord.js';
 
 export const configCommand = new SlashCommandBuilder()
   .setName('config')
@@ -17,7 +16,16 @@ export const manifestCommand = new SlashCommandBuilder()
 
 export const storeCommand = new SlashCommandBuilder()
   .setName('store')
-  .setDescription('Listen and log any push events for the store service connection')
-  .setDefaultMemberPermissions(PermissionsBitField.resolve('Administrator'));
+  .setDescription('Get the raw store product data for a product ID')
+  .addIntegerOption((opt) =>
+    opt.setName('product-id').setDescription('ID number for the product').setRequired(true)
+  )
+  .addStringOption((opt) =>
+    opt
+      .setName('type')
+      .setDescription(`Store type to query ('upsell' or 'ingame')`)
+      .setChoices({ name: 'Ingame', value: 'ingame' }, { name: 'Upsell', value: 'upsell' })
+      .setRequired(true)
+  );
 
-export const commands = [configCommand, manifestCommand].map((c) => c.toJSON());
+export const commands = [configCommand, manifestCommand, storeCommand].map((c) => c.toJSON());

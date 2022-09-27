@@ -5,14 +5,16 @@ import { Routes } from 'discord-api-types/v10';
 import {
   game_configuration,
   ownership_service,
+  store_service,
   UbisoftDemux,
   UbisoftFileParser,
 } from 'ubisoft-demux';
 import yaml from 'yaml';
 import phin from 'phin';
-import { commands, storeCommand } from './deploy-commands';
+import { commands, configCommand, manifestCommand, storeCommand } from './deploy-commands';
 import { Account } from '../common/config';
 import { UbiTicketManager } from '../demux/ticket-manager';
+import { IExpandedStoreProduct } from '../schema/product';
 
 export interface DiscordBotBuilderProps {
   botToken: string;
@@ -82,18 +84,26 @@ export class DiscordBot {
       { commandName: interaction.commandName, options: interaction.options.data },
       'Received interaction'
     );
-    if (interaction.commandName === 'config') {
+    if (interaction.commandName === configCommand.name) {
       await this.configCommand(interaction);
     }
-    if (interaction.commandName === 'manifest') {
+    if (interaction.commandName === manifestCommand.name) {
       await this.manifestCommand(interaction);
     }
     if (interaction.commandName === storeCommand.name) {
-      await this.storeListen(interaction);
+      await this.storeCommand(interaction);
     }
   }
 
-  private async storeListen(interaction: Discord.ChatInputCommandInteraction): Promise<void> {
+  private async storeCommand(interaction: Discord.ChatInputCommandInteraction): Promise<void> {
+    const productId = interaction.options.getInteger('product-id', true);
+    const storeTypeName = interaction.options.getString('type', true);
+    const storeTypeMap: Record<string, store_service.StoreType> = {
+      ingame: store_service.StoreType.StoreType_Ingame,
+      upsell: store_service.StoreType.StoreType_Upsell,
+    };
+    const storeType = storeTypeMap[storeTypeName];
+
     const demux = new UbisoftDemux({ timeout: 2500 }); // Shorter than 3 second Discord timeout
     try {
       await demux.basicRequest({
@@ -105,14 +115,9 @@ export class DiscordBot {
           },
         },
       });
+      this.L.debug('Starting store service connection');
       const storeConnection = await demux.openConnection('store_service');
-      demux.socket.on('push', (payload) => {
-        this.L.info({ payload }, 'socket push event');
-      });
-      storeConnection.on('push', (payload) => {
-        this.L.info({ payload }, 'store push event');
-      });
-      const initResp = await storeConnection.request({
+      await storeConnection.request({
         request: {
           requestId: 1,
           initializeReq: {
@@ -121,9 +126,42 @@ export class DiscordBot {
           },
         },
       });
-      this.L.info({ initResp }, 'Store connection init response');
+      const storeDataResp = await storeConnection.request({
+        request: {
+          requestId: 1,
+          getDataReq: {
+            storeDataType: storeType,
+            productId: [productId],
+          },
+        },
+      });
+      const productList: IExpandedStoreProduct[] =
+        storeDataResp.toJSON().response?.getDataRsp?.products || [];
+      const requestedProduct = productList.find((p) => p.productId === productId);
+      if (requestedProduct) {
+        if (requestedProduct.configuration) {
+          requestedProduct.configuration = JSON.parse(
+            Buffer.from(requestedProduct.configuration, 'base64').toString('utf8')
+          );
+        }
+        requestedProduct.associations?.sort((a, b) => a - b);
+        requestedProduct.ownershipAssociations?.sort((a, b) => a - b);
+        let productJson = JSON.stringify(requestedProduct, null, 2);
+        if (productJson.length > 8 * 1024 * 1024) {
+          // If greater than 8MiB, remove the formatting and try that
+          productJson = JSON.stringify(requestedProduct);
+        }
+        const attachmentFile = new Discord.AttachmentBuilder(Buffer.from(productJson, 'utf-8'), {
+          name: `store-${storeTypeName}-${productId}.json`,
+        });
+        await interaction.reply({
+          content: `Store ${storeTypeName} product for product ID ${productId}:`,
+          files: [attachmentFile],
+        });
+        return;
+      }
 
-      await interaction.reply(`Internally logging any store push events...`);
+      await interaction.reply(`Store ${storeTypeName} product for ID ${productId} does not exist`);
     } catch (err) {
       this.L.error(err);
       await demux.destroy();
