@@ -84,6 +84,7 @@ export default class DiscordReporter {
           storeProduct.storePartner.__new
       )
     ) {
+      this.L.debug({ changesObj }, 'Skipping storePartner switch change notification');
       return; // skip
     }
 
