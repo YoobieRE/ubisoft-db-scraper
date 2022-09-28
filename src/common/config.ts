@@ -1,6 +1,7 @@
 import fs from 'fs-extra';
 import path from 'path';
 import type { Level } from 'pino';
+import { parse } from 'jsonc-parser';
 import { DiscordChannelWebhookList } from '../reports/discord';
 
 export interface Account {
@@ -12,7 +13,7 @@ export interface Account {
 export interface ConfigFile {
   accounts: Account[];
   discordBotAccount: Account;
-  storeListenerAccount: Account;
+  storeListenerAccount?: Account;
   discordBotToken: string;
   discordTestGuild?: string;
   logLevel?: Level;
@@ -36,4 +37,6 @@ export interface ConfigFile {
 
 export const configDir = process.env.CONFIG_DIR || './config';
 
-export const config: ConfigFile = fs.readJSONSync(path.join(configDir, 'config.json'));
+export const config: ConfigFile = parse(
+  fs.readFileSync(path.join(configDir, 'config.json'), 'utf-8')
+);
