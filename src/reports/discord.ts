@@ -6,8 +6,10 @@ import phin from 'phin';
 import { Logger } from 'pino';
 import { game_configuration } from 'ubisoft-demux';
 import pRetry from 'p-retry';
+import deepEqual from 'fast-deep-equal';
 import { LauncherVersionDocument } from '../schema/launcher-version';
 import { IExpandedStoreProduct, IProduct, Product, ProductDocument } from '../schema/product';
+import { ProductRevision } from '../schema/product-revision';
 
 export interface DiscordChannelWebhookList {
   default: string;
@@ -70,24 +72,15 @@ export default class DiscordReporter {
 
     // If the change is only a switch in storePartner, just skip it
     const changesObj = diff(cleanOldProduct, cleanNewProduct);
-    this.L.debug({ changesObj }, 'Product diffs object');
+    const pastVersions = await ProductRevision.find({ productId }).sort({ _id: -1 }).limit(3); // Ordering by _id since timestamps were broken previously
+    const cleanPastVersions = pastVersions.map((d) => documentCleaner<ProductDocument>(d));
     if (
-      changesObj && // there are changes
-      'storeProduct' in changesObj && // and storeProduct is in the changes object
-      Object.keys(changesObj).length === 1 && // and storeProduct is the only change
-      Object.values(changesObj.storeProduct).every(
-        // every store type product (ingame/upsell)
-        (storeProduct: any) =>
-          'storePartner' in storeProduct && // should have a storePartner key
-          Object.keys(storeProduct).length === 1 && // and storePartner is the only change
-          storeProduct.storePartner.__old && // and it's a change in value (not a new value)
-          storeProduct.storePartner.__new
-      )
+      deepEqual(cleanNewProduct, cleanPastVersions[1]) &&
+      deepEqual(cleanPastVersions[0], cleanPastVersions[2])
     ) {
-      this.L.debug({ changesObj }, 'Skipping storePartner switch change notification');
+      this.L.debug({ changesObj }, 'Detected state oscillation, skipping notification');
       return; // skip
     }
-
     let changes = diffString(cleanOldProduct, cleanNewProduct, {
       color: false,
       maxElisions: 1,
