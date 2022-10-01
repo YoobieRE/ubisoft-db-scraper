@@ -286,6 +286,8 @@ export default class DbScraper extends (EventEmitter as new () => TypedEmitter<D
         const oldProduct = await ProductRevision.create({
           ...currentProduct.toObject(),
           _id: undefined,
+          createdAt: undefined,
+          updatedAt: undefined,
         });
         // Don't overwrite existing storeProduct with undefined
         if (newStoreProduct) currentProduct.set({ storeProduct: newStoreProduct });
