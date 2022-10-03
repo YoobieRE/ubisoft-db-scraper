@@ -227,6 +227,10 @@ export default class DiscordReporter {
       productRoot?.icon_image,
       productRoot?.splash_image,
       productRoot?.logo_image,
+      product?.storeProduct?.upsell?.configuration?.assets?.featured,
+      product?.storeProduct?.upsell?.configuration?.assets?.small,
+      product?.storeProduct?.ingame?.configuration?.assets?.productImage,
+      ...(product?.storeProduct?.ingame?.configuration?.assets?.imageGallery || []),
     ];
     this.L.trace({ viableImages }, 'getting best image from all images');
 
