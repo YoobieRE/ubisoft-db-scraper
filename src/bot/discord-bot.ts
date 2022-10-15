@@ -141,7 +141,7 @@ export class DiscordBot {
       if (requestedProduct) {
         if (requestedProduct.configuration) {
           requestedProduct.configuration = JSON.parse(
-            Buffer.from(requestedProduct.configuration, 'base64').toString('utf8')
+            Buffer.from(requestedProduct.configuration as string, 'base64').toString('utf8')
           );
         }
         requestedProduct.associations?.sort((a, b) => a - b);
