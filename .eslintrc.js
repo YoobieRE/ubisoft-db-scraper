@@ -23,6 +23,7 @@ module.exports = {
     camelcase: 'off',
     'no-underscore-dangle': 'off',
     // import
+    'import/no-extraneous-dependencies': ['error', { devDependencies: ['scripts/**'] }],
     'import/prefer-default-export': 'off',
     'import/extensions': [
       'error',
