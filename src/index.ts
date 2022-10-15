@@ -89,8 +89,8 @@ async function scrape(target: 'config' | 'store'): Promise<void> {
 
 async function main(): Promise<void> {
   if (config.storeListenerAccount) {
-  const storeListener = new StoreListener({ account: config.storeListenerAccount, logger });
-  await storeListener.listenForUpdates();
+    const storeListener = new StoreListener({ account: config.storeListenerAccount, logger });
+    await storeListener.listenForUpdates();
   }
 
   if (config.discordBotToken) {

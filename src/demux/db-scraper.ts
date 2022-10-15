@@ -112,7 +112,7 @@ export default class DbScraper extends (EventEmitter as new () => TypedEmitter<D
               const expandedProduct = product;
               if (product?.configuration) {
                 expandedProduct.configuration = JSON.parse(
-                  Buffer.from(product.configuration, 'base64').toString('utf8')
+                  Buffer.from(product.configuration as string, 'base64').toString('utf8')
                 );
               }
               expandedProduct?.associations?.sort((a, b) => a - b);

@@ -4,7 +4,7 @@ import { diffString, diff, DiffStringOptions } from 'json-diff';
 import mongoose from 'mongoose';
 import phin from 'phin';
 import { Logger } from 'pino';
-import { game_configuration } from 'ubisoft-demux';
+import { game_configuration, product_store_configuration } from 'ubisoft-demux';
 import pRetry from 'p-retry';
 import deepEqual from 'fast-deep-equal';
 import { LauncherVersionDocument } from '../schema/launcher-version';
@@ -227,14 +227,26 @@ export default class DiscordReporter {
       productRoot?.icon_image,
       productRoot?.splash_image,
       productRoot?.logo_image,
-      product?.storeProduct?.upsell?.configuration?.assets?.featured,
-      product?.storeProduct?.upsell?.configuration?.assets?.small,
-      product?.storeProduct?.ingame?.configuration?.assets?.productImage,
-      ...(product?.storeProduct?.ingame?.configuration?.assets?.imageGallery || []),
+      (
+        product?.storeProduct?.upsell
+          ?.configuration as product_store_configuration.UpsellStoreConfiguration
+      )?.assets?.featured,
+      (
+        product?.storeProduct?.upsell
+          ?.configuration as product_store_configuration.UpsellStoreConfiguration
+      )?.assets?.small,
+      (
+        product?.storeProduct?.ingame
+          ?.configuration as product_store_configuration.IngameStoreConfiguration
+      )?.assets?.productImage,
+      ...((
+        product?.storeProduct?.ingame
+          ?.configuration as product_store_configuration.IngameStoreConfiguration
+      )?.assets?.imageGallery || []),
     ];
     this.L.trace({ viableImages }, 'getting best image from all images');
 
-    const thumbnailFileName = viableImages.find((image) => image?.includes('.'));
+    const thumbnailFileName = viableImages.find((image) => (image as string)?.includes('.'));
     if (!thumbnailFileName) return undefined;
     return `http://static3.cdn.ubi.com/orbit/uplay_launcher_3_0/assets/${thumbnailFileName}`;
   }

@@ -1,9 +1,11 @@
 import mongoose from 'mongoose';
-import { game_configuration, store_service } from 'ubisoft-demux';
+import { game_configuration, product_store_configuration, store_service } from 'ubisoft-demux';
 
 export interface IExpandedStoreProduct
   extends Omit<Partial<store_service.StoreProduct>, 'configuration'> {
-  configuration?: any;
+  configuration?:
+    | product_store_configuration.UpsellStoreConfiguration
+    | product_store_configuration.IngameStoreConfiguration;
 }
 
 export interface IStoreTypeProductMap {
