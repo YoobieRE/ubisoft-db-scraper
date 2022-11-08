@@ -213,6 +213,10 @@ export default class DiscordReporter {
       (product.configuration as game_configuration.Configuration)?.root?.installer?.game_identifier,
       (product.configuration as game_configuration.Configuration)?.root?.sort_string,
       (product.configuration as game_configuration.Configuration)?.root?.display_name,
+      (product.configuration as game_configuration.Configuration)?.root?.start_game?.online
+        ?.executables?.[0]?.shortcut_name,
+      (product.configuration as game_configuration.Configuration)?.root?.start_game?.offline
+        ?.executables?.[0]?.shortcut_name,
     ].filter((name): name is string => Boolean(name));
     this.L.trace({ allNames }, 'getting best name from all names');
     const name = allNames[0];
