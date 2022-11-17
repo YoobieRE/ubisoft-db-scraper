@@ -74,8 +74,6 @@ export default class DbScraper extends (EventEmitter as new () => TypedEmitter<D
         chunkArray(productIds, this.productIdChunkSize).map(async (productIdsChunk, index) => {
           const accountIndex = index % this.connectionPool.length;
           const { limiter, storeConnection } = this.connectionPool[accountIndex];
-          const firstProductId = productIdsChunk[0];
-          const lastProductId = productIdsChunk[productIdsChunk.length - 1];
 
           /**
            * Generic function to get and manipulate store data for both upsell and ingame
@@ -91,7 +89,7 @@ export default class DbScraper extends (EventEmitter as new () => TypedEmitter<D
                 limiter.add(() => {
                   this.L.debug(
                     { accountIndex },
-                    `Getting ${typeName} store data and current products for chunk ${firstProductId}-${lastProductId}`
+                    `Getting ${typeName} store data and current products for chunk ${index}`
                   );
                   return storeConnection.request({
                     request: {
@@ -131,7 +129,7 @@ export default class DbScraper extends (EventEmitter as new () => TypedEmitter<D
             getStoreData(store_service.StoreType.StoreType_Ingame),
           ]);
           const currentProducts = await Product.find({
-            _id: { $gte: firstProductId, $lte: lastProductId },
+            _id: { $in: productIdsChunk },
           });
           this.L.debug(`Received ${currentProducts.length} current products`);
           currentProducts.forEach((currentProduct) => {
@@ -310,12 +308,10 @@ export default class DbScraper extends (EventEmitter as new () => TypedEmitter<D
     );
 
     await Promise.all(
-      chunkArray(productIds, this.productIdChunkSize).map(async (productIdsChunk) => {
-        const firstProductId = productIdsChunk[0];
-        const lastProductId = productIdsChunk[productIdsChunk.length - 1];
-        this.L.debug(`Getting current products for chunk ${firstProductId}-${lastProductId}`);
+      chunkArray(productIds, this.productIdChunkSize).map(async (productIdsChunk, index) => {
+        this.L.debug(`Getting current products for chunk ${index}`);
         const currentProducts = await Product.find({
-          _id: { $gte: firstProductId, $lte: lastProductId },
+          _id: { $in: productIdsChunk },
         });
         const currentProductsMap = new Map(
           currentProducts.map((product) => [product._id, product])
