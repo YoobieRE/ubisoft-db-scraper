@@ -1,3 +1,4 @@
+/* eslint-disable class-methods-use-this */
 import phin from 'phin';
 import * as shop from './shop-types';
 
@@ -118,7 +119,6 @@ export class ShopApi {
     return url;
   }
 
-  // eslint-disable-next-line class-methods-use-this
   private handleError(resp: phin.IJSONResponse<unknown>): void {
     if (resp.statusCode === 400) {
       const body = resp.body as shop.ShopFaultResponse;
@@ -126,5 +126,15 @@ export class ShopApi {
       Object.assign(err, body.fault);
       throw err;
     }
+  }
+
+  public getCountriesByCurrency(currency: shop.StoreCurrency): shop.CountryCode[] {
+    return shop.currencyCountryMap[currency];
+  }
+
+  public getCurrenciesByCountry(country: shop.CountryCode): shop.StoreCurrency[] {
+    return Object.entries(shop.currencyCountryMap)
+      .filter(([, countries]) => countries.includes(country))
+      .map(([currency]) => currency as shop.StoreCurrency);
   }
 }
