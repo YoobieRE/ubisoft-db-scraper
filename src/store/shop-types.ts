@@ -20,14 +20,58 @@ export type CountryCode =
   | 'uk'
   | 'us';
 
-export type StoreRegion =
+export type SiteID =
   | `${CountryCode}_ubisoft`
   | `${CountryCode}_uplaypc`
   | 'ca_south_park'
-  | 'us_south_park' // same as us_ubisoft
+  | 'us_south_park'
   | 'performance-tracker';
 
-export const currencyCountryMap: Record<StoreCurrency, CountryCode[]> = {
+export const siteIds: SiteID[] = [
+  'anz_ubisoft',
+  'anz_uplaypc',
+  'at_ubisoft',
+  'at_uplaypc',
+  'br_ubisoft',
+  'br_uplaypc',
+  'ca_south_park',
+  'ca_ubisoft',
+  'ca_uplaypc',
+  'cn_ubisoft',
+  'cn_uplaypc',
+  'de_ubisoft',
+  'de_uplaypc',
+  'es_ubisoft',
+  'es_uplaypc',
+  'eu_ubisoft',
+  'eu_uplaypc',
+  'fr_ubisoft',
+  'fr_uplaypc',
+  'ie_ubisoft',
+  'ie_uplaypc',
+  'it_ubisoft',
+  'it_uplaypc',
+  'jp_ubisoft',
+  'jp_uplaypc',
+  'kr_ubisoft',
+  'kr_uplaypc',
+  'nl_ubisoft',
+  'nl_uplaypc',
+  'performance-tracker',
+  'ru_ubisoft',
+  'ru_uplaypc',
+  'sea_ubisoft',
+  'sea_uplaypc',
+  'tr_ubisoft',
+  'tr_uplaypc',
+  'uk_ubisoft',
+  'uk_uplaypc',
+  'us_south_park',
+  'us_ubisoft',
+  'us_uplaypc',
+];
+
+export const currencyCountryMap: Record<CurrencyCode, CountryCode[]> = {
   ARS: ['br'],
   AUD: ['anz'],
   BRL: ['br'],
@@ -63,7 +107,7 @@ export const currencyCountryMap: Record<StoreCurrency, CountryCode[]> = {
 };
 
 // https://ecom-cdn.ubi.com/wallet/wallet-reward-claim-modal/app.js
-export type StoreCurrency =
+export type CurrencyCode =
   | 'ARS'
   | 'AUD'
   | 'BRL'
@@ -97,39 +141,545 @@ export type StoreCurrency =
   | 'USD'
   | 'UYU';
 
-// https://overlay.ubisoft.com/overlay-connect-integration/widget.js
+export const currencyCodes: CurrencyCode[] = [
+  'ARS',
+  'AUD',
+  'BRL',
+  'CAD',
+  'CLP',
+  'CNY',
+  'COP',
+  'CRC',
+  'CZK',
+  'DKK',
+  'EUR',
+  'GBP',
+  'HKD',
+  'HUF',
+  'IDR',
+  'JPY',
+  'KRW',
+  'MXN',
+  'MYR',
+  'NOK',
+  'NZD',
+  'PEN',
+  'PHP',
+  'PLN',
+  'RUB',
+  'SEK',
+  'SGD',
+  'THB',
+  'TRY',
+  'TWD',
+  'USD',
+  'UYU',
+];
+
+// imports at bottom of https://ecom-cdn.ubi.com/wallet/wallet-header-balance/app.js
+// Search for underscore locale, convert to dash, remove singulars, remove en-BR/es-BR
 export type ShopLocale =
-  | 'ar-AE'
-  | 'zh-CN'
-  | 'zh-TW'
-  | 'zh-HK'
-  | 'cs-CZ'
-  | 'da-DK'
-  | 'nl-NL'
-  | 'en-GB'
-  | 'en-CA'
-  | 'en-US'
-  | 'fi-FI'
-  | 'fr-FR'
-  | 'fr-CA'
+  | 'de-AT'
   | 'de-DE'
-  | 'hu-HU'
+  | 'en-AU'
+  | 'en-CA'
+  | 'en-GB'
+  | 'en-ID'
+  | 'en-MY'
+  | 'en-PH'
+  | 'en-SG'
+  | 'en-SK'
+  | 'en-TR'
+  | 'en-US'
+  | 'en-ZW'
+  | 'es-ES'
+  | 'es-US'
+  | 'fr-CA'
+  | 'fr-FR'
+  | 'ia-AG'
+  | 'ia-AR'
+  | 'ia-BB'
+  | 'ia-BM'
+  | 'ia-BO'
+  | 'ia-BR'
+  | 'ia-BS'
+  | 'ia-BZ'
+  | 'ia-CL'
+  | 'ia-CO'
+  | 'ia-CR'
+  | 'ia-DM'
+  | 'ia-DO'
+  | 'ia-EC'
+  | 'ia-GD'
+  | 'ia-GT'
+  | 'ia-GY'
+  | 'ia-HN'
+  | 'ia-HT'
+  | 'ia-JM'
+  | 'ia-KN'
+  | 'ia-LC'
+  | 'ia-MX'
+  | 'ia-NI'
+  | 'ia-PA'
+  | 'ia-PE'
+  | 'ia-PY'
+  | 'ia-SR'
+  | 'ia-SV'
+  | 'ia-TT'
+  | 'ia-UY'
+  | 'ia-VC'
+  | 'ia-VE'
   | 'it-IT'
   | 'ja-JP'
   | 'ko-KR'
-  | 'nb-NO'
+  | 'la-AG'
+  | 'la-AR'
+  | 'la-BB'
+  | 'la-BM'
+  | 'la-BO'
+  | 'la-BR'
+  | 'la-BS'
+  | 'la-BZ'
+  | 'la-CL'
+  | 'la-CO'
+  | 'la-CR'
+  | 'la-DM'
+  | 'la-DO'
+  | 'la-EC'
+  | 'la-GD'
+  | 'la-GT'
+  | 'la-GY'
+  | 'la-HN'
+  | 'la-HT'
+  | 'la-JM'
+  | 'la-KN'
+  | 'la-LC'
+  | 'la-MX'
+  | 'la-NI'
+  | 'la-PA'
+  | 'la-PE'
+  | 'la-PY'
+  | 'la-SR'
+  | 'la-SV'
+  | 'la-TT'
+  | 'la-UY'
+  | 'la-VC'
+  | 'la-VE'
+  | 'nl-NL'
   | 'pl-PL'
-  | 'pt-PT'
+  | 'pt-AG'
+  | 'pt-AR'
+  | 'pt-BB'
+  | 'pt-BM'
+  | 'pt-BO'
   | 'pt-BR'
+  | 'pt-BS'
+  | 'pt-BZ'
+  | 'pt-CL'
+  | 'pt-CO'
+  | 'pt-CR'
+  | 'pt-DM'
+  | 'pt-DO'
+  | 'pt-EC'
+  | 'pt-GD'
+  | 'pt-GT'
+  | 'pt-GY'
+  | 'pt-HN'
+  | 'pt-HT'
+  | 'pt-JM'
+  | 'pt-KN'
+  | 'pt-LC'
+  | 'pt-MX'
+  | 'pt-NI'
+  | 'pt-PA'
+  | 'pt-PE'
+  | 'pt-PY'
+  | 'pt-SR'
+  | 'pt-SV'
+  | 'pt-TT'
+  | 'pt-UY'
+  | 'pt-VC'
+  | 'pt-VE'
   | 'ru-RU'
-  | 'es-ES'
-  | 'es-MX'
-  | 'sv-SE'
   | 'th-TH'
-  | 'tr-TR'
-  | 'uk-UA';
+  | 'zh-CN'
+  | 'zh-HK'
+  | 'zh-TW';
 
-export type DataSection = 'images' | 'variations' | 'prices' | 'promotions' | 'availability';
+export const shopLocales: ShopLocale[] = [
+  'de-AT',
+  'de-DE',
+  'en-AU',
+  'en-CA',
+  'en-GB',
+  'en-ID',
+  'en-MY',
+  'en-PH',
+  'en-SG',
+  'en-SK',
+  'en-TR',
+  'en-US',
+  'en-ZW',
+  'es-ES',
+  'es-US',
+  'fr-CA',
+  'fr-FR',
+  'ia-AG',
+  'ia-AR',
+  'ia-BB',
+  'ia-BM',
+  'ia-BO',
+  'ia-BR',
+  'ia-BS',
+  'ia-BZ',
+  'ia-CL',
+  'ia-CO',
+  'ia-CR',
+  'ia-DM',
+  'ia-DO',
+  'ia-EC',
+  'ia-GD',
+  'ia-GT',
+  'ia-GY',
+  'ia-HN',
+  'ia-HT',
+  'ia-JM',
+  'ia-KN',
+  'ia-LC',
+  'ia-MX',
+  'ia-NI',
+  'ia-PA',
+  'ia-PE',
+  'ia-PY',
+  'ia-SR',
+  'ia-SV',
+  'ia-TT',
+  'ia-UY',
+  'ia-VC',
+  'ia-VE',
+  'it-IT',
+  'ja-JP',
+  'ko-KR',
+  'la-AG',
+  'la-AR',
+  'la-BB',
+  'la-BM',
+  'la-BO',
+  'la-BR',
+  'la-BS',
+  'la-BZ',
+  'la-CL',
+  'la-CO',
+  'la-CR',
+  'la-DM',
+  'la-DO',
+  'la-EC',
+  'la-GD',
+  'la-GT',
+  'la-GY',
+  'la-HN',
+  'la-HT',
+  'la-JM',
+  'la-KN',
+  'la-LC',
+  'la-MX',
+  'la-NI',
+  'la-PA',
+  'la-PE',
+  'la-PY',
+  'la-SR',
+  'la-SV',
+  'la-TT',
+  'la-UY',
+  'la-VC',
+  'la-VE',
+  'nl-NL',
+  'pl-PL',
+  'pt-AG',
+  'pt-AR',
+  'pt-BB',
+  'pt-BM',
+  'pt-BO',
+  'pt-BR',
+  'pt-BS',
+  'pt-BZ',
+  'pt-CL',
+  'pt-CO',
+  'pt-CR',
+  'pt-DM',
+  'pt-DO',
+  'pt-EC',
+  'pt-GD',
+  'pt-GT',
+  'pt-GY',
+  'pt-HN',
+  'pt-HT',
+  'pt-JM',
+  'pt-KN',
+  'pt-LC',
+  'pt-MX',
+  'pt-NI',
+  'pt-PA',
+  'pt-PE',
+  'pt-PY',
+  'pt-SR',
+  'pt-SV',
+  'pt-TT',
+  'pt-UY',
+  'pt-VC',
+  'pt-VE',
+  'ru-RU',
+  'th-TH',
+  'zh-CN',
+  'zh-HK',
+  'zh-TW',
+];
+
+export const regionLocaleMap: Record<SiteID, ShopLocale[]> = {
+  anz_ubisoft: ['en-AU'],
+  anz_uplaypc: ['en-AU'],
+  at_ubisoft: ['de-AT'],
+  at_uplaypc: ['de-AT'],
+  br_ubisoft: [
+    'ia-AG',
+    'ia-AR',
+    'ia-BB',
+    'ia-BM',
+    'ia-BO',
+    'ia-BR',
+    'ia-BS',
+    'ia-BZ',
+    'ia-CL',
+    'ia-CO',
+    'ia-CR',
+    'ia-DM',
+    'ia-DO',
+    'ia-EC',
+    'ia-GD',
+    'ia-GT',
+    'ia-GY',
+    'ia-HN',
+    'ia-HT',
+    'ia-JM',
+    'ia-KN',
+    'ia-LC',
+    'ia-MX',
+    'ia-NI',
+    'ia-PA',
+    'ia-PE',
+    'ia-PY',
+    'ia-SR',
+    'ia-SV',
+    'ia-TT',
+    'ia-UY',
+    'ia-VC',
+    'ia-VE',
+    'la-AG',
+    'la-AR',
+    'la-BB',
+    'la-BM',
+    'la-BO',
+    'la-BR',
+    'la-BS',
+    'la-BZ',
+    'la-CL',
+    'la-CO',
+    'la-CR',
+    'la-DM',
+    'la-DO',
+    'la-EC',
+    'la-GD',
+    'la-GT',
+    'la-GY',
+    'la-HN',
+    'la-HT',
+    'la-JM',
+    'la-KN',
+    'la-LC',
+    'la-MX',
+    'la-NI',
+    'la-PA',
+    'la-PE',
+    'la-PY',
+    'la-SR',
+    'la-SV',
+    'la-TT',
+    'la-UY',
+    'la-VC',
+    'la-VE',
+    'pt-AG',
+    'pt-AR',
+    'pt-BB',
+    'pt-BM',
+    'pt-BO',
+    'pt-BR',
+    'pt-BS',
+    'pt-BZ',
+    'pt-CL',
+    'pt-CO',
+    'pt-CR',
+    'pt-DM',
+    'pt-DO',
+    'pt-EC',
+    'pt-GD',
+    'pt-GT',
+    'pt-GY',
+    'pt-HN',
+    'pt-HT',
+    'pt-JM',
+    'pt-KN',
+    'pt-LC',
+    'pt-MX',
+    'pt-NI',
+    'pt-PA',
+    'pt-PE',
+    'pt-PY',
+    'pt-SR',
+    'pt-SV',
+    'pt-TT',
+    'pt-UY',
+    'pt-VC',
+    'pt-VE',
+  ],
+  br_uplaypc: [
+    'ia-AG',
+    'ia-AR',
+    'ia-BB',
+    'ia-BM',
+    'ia-BO',
+    'ia-BR',
+    'ia-BS',
+    'ia-BZ',
+    'ia-CL',
+    'ia-CO',
+    'ia-CR',
+    'ia-DM',
+    'ia-DO',
+    'ia-EC',
+    'ia-GD',
+    'ia-GT',
+    'ia-GY',
+    'ia-HN',
+    'ia-HT',
+    'ia-JM',
+    'ia-KN',
+    'ia-LC',
+    'ia-MX',
+    'ia-NI',
+    'ia-PA',
+    'ia-PE',
+    'ia-PY',
+    'ia-SR',
+    'ia-SV',
+    'ia-TT',
+    'ia-UY',
+    'ia-VC',
+    'ia-VE',
+    'la-AG',
+    'la-AR',
+    'la-BB',
+    'la-BM',
+    'la-BO',
+    'la-BR',
+    'la-BS',
+    'la-BZ',
+    'la-CL',
+    'la-CO',
+    'la-CR',
+    'la-DM',
+    'la-DO',
+    'la-EC',
+    'la-GD',
+    'la-GT',
+    'la-GY',
+    'la-HN',
+    'la-HT',
+    'la-JM',
+    'la-KN',
+    'la-LC',
+    'la-MX',
+    'la-NI',
+    'la-PA',
+    'la-PE',
+    'la-PY',
+    'la-SR',
+    'la-SV',
+    'la-TT',
+    'la-UY',
+    'la-VC',
+    'la-VE',
+    'pt-AG',
+    'pt-AR',
+    'pt-BB',
+    'pt-BM',
+    'pt-BO',
+    'pt-BR',
+    'pt-BS',
+    'pt-BZ',
+    'pt-CL',
+    'pt-CO',
+    'pt-CR',
+    'pt-DM',
+    'pt-DO',
+    'pt-EC',
+    'pt-GD',
+    'pt-GT',
+    'pt-GY',
+    'pt-HN',
+    'pt-HT',
+    'pt-JM',
+    'pt-KN',
+    'pt-LC',
+    'pt-MX',
+    'pt-NI',
+    'pt-PA',
+    'pt-PE',
+    'pt-PY',
+    'pt-SR',
+    'pt-SV',
+    'pt-TT',
+    'pt-UY',
+    'pt-VC',
+    'pt-VE',
+  ],
+  ca_ubisoft: ['en-CA', 'fr-CA'],
+  ca_uplaypc: ['en-CA', 'fr-CA'],
+  ca_south_park: [],
+  cn_ubisoft: ['zh-CN'],
+  cn_uplaypc: ['zh-CN'],
+  de_ubisoft: ['de-DE'],
+  de_uplaypc: ['de-DE'],
+  es_ubisoft: ['es-ES'],
+  es_uplaypc: ['es-ES'],
+  eu_ubisoft: ['en-SK', 'pl-PL'],
+  eu_uplaypc: ['en-SK', 'pl-PL'],
+  fr_ubisoft: ['fr-FR'],
+  fr_uplaypc: ['fr-FR'],
+  ie_ubisoft: ['en-ZW'],
+  ie_uplaypc: ['en-ZW'],
+  it_ubisoft: ['it-IT'],
+  it_uplaypc: ['it-IT'],
+  jp_ubisoft: ['ja-JP'],
+  jp_uplaypc: ['ja-JP'],
+  kr_ubisoft: ['ko-KR'],
+  kr_uplaypc: ['ko-KR'],
+  nl_ubisoft: ['nl-NL'],
+  nl_uplaypc: ['nl-NL'],
+  'performance-tracker': ['fr-FR'],
+  ru_ubisoft: ['ru-RU'],
+  ru_uplaypc: ['ru-RU'],
+  sea_ubisoft: ['en-ID', 'en-MY', 'en-PH', 'en-SG', 'th-TH', 'zh-HK', 'zh-TW'],
+  sea_uplaypc: ['en-ID', 'en-MY', 'en-PH', 'en-SG', 'th-TH', 'zh-HK', 'zh-TW'],
+  tr_ubisoft: ['en-TR'],
+  tr_uplaypc: ['en-TR'],
+  uk_ubisoft: ['en-GB'],
+  uk_uplaypc: ['en-GB'],
+  us_ubisoft: ['en-US', 'es-US'],
+  us_uplaypc: ['en-US', 'es-US'],
+  us_south_park: ['en-US'],
+};
+
+export type ProductParameter = 'images' | 'variations' | 'prices' | 'promotions' | 'availability';
 
 export type StoreVersion =
   | 'v17_1'
@@ -168,245 +718,687 @@ export type StoreVersion =
   | 'v22_10'
   | string;
 
-export interface ProductsResponseBody {
-  _v: string;
-  _type: string;
-  count: number;
-  data?: Product[];
-  total: number;
+export interface ShopProductPage {
+  _id: string;
+  siteId: SiteID;
+  product: Product;
+  createdAt: Date;
+  updatedAt: Date;
+  __v: number;
 }
 
 export interface Product {
-  _type: string;
-  brand: string;
-  currency: string;
   id: string;
+  /**
+   * @diff currency
+   */
+  currency: CurrencyCode;
+  _id: string;
+  _type: 'product';
+  brand?: string;
   image_groups: ImageGroup[];
   inventory: Inventory;
-  long_description: string;
-  manufacturer_name: string;
+  long_description?: string;
   master: Master;
   min_order_quantity: number;
   name: string;
-  page_keywords?: string;
-  price: number;
-  price_max?: number;
-  primary_category_id: string;
-  product_promotions: ProductPromotion[];
+  /**
+   * @diff region
+   */
+  page_title?: string;
+  /**
+   * @diff currency, region
+   */
+  price?: number;
+  /**
+   * @diff currency, region
+   */
+  price_per_unit?: number;
+  /**
+   * @diff region
+   */
+  primary_category_id?: string;
+  /**
+   * @diff region
+   */
+  product_promotions?: ProductPromotion[];
   step_quantity: number;
-  type: Type;
-  valid_from: ValidFrom;
-  variants: Variant[];
+  type: ProductType;
+  unit_measure?: string;
+  unit_quantity?: number;
+  variants?: Variant[];
   variation_attributes: VariationAttribute[];
-  c_compareSectionTitle?: string;
-  c_discoverSectionTitle?: string;
-  c_enablePredictiveIntelligence: boolean;
-  c_forceUplayBox?: boolean;
-  c_freeOfferEndDateTime?: string;
-  c_freeOfferProductLauncherId?: string;
-  c_freeOfferProductType?: string;
-  c_freeOfferStartDateTime?: string;
-  c_freeOfferUplayGameID?: string;
+  variation_values?: VariationValues;
+  c_digitalItemNature?: CDigitalItemNature;
+  c_dlcContentText?: string;
+  c_dlcType?: CDlcType;
+  c_dlcWarningText?: string;
+  c_globalDlcProduct?: string;
   c_hreflangjson: string;
-  c_isNew: boolean;
+  c_isKeyRequiredBool?: boolean;
   c_legalLineEmea?: string;
-  c_legalLineNcsa?: string;
-  c_legalLineWW: string;
-  c_mediasSectionTitle?: string;
-  c_partOfUbisoftPlus: boolean;
-  c_productAdHocOfferAid: string;
-  c_productAdHocOfferEndDateTime: string;
-  c_productAdHocOfferStartDateTime: string;
-  c_productBrandDisplayString: string;
-  c_productCompareTableHTML: string;
-  c_productContentHTML: string;
-  c_productCoopBool: boolean;
-  c_productCustomReleaseDateString: string;
-  c_productDescriptionFirstParagraphString: string;
-  c_productDeveloperString: string;
-  c_productEditionString: string;
-  c_productGameDLC?: string;
-  c_productGenreDisplayString: string;
-  c_productGenreTagString: string;
+  c_legalLineWW?: string;
+  c_partOfUbisoftPlus?: boolean;
+  c_peopleSoftEMEAItemId?: string;
+  c_peopleSoftNCSAItemId?: string;
+  c_productActivationMethodString?: CProductActivationMethodString;
+  c_productActivationString?: string;
+  c_productBaseProductIdString?: string;
+  c_productBrandDisplayString?: string;
+  c_productCategory?: string;
+  c_productCoopBool?: boolean;
+  c_productCustomReleaseDateString?: string;
+  c_productDescriptionFirstParagraphString?: string;
+  c_productDlcBaseString?: string;
+  c_productEditionString?: string;
+  c_productExtRefString?: string;
+  c_productFirstThirdPartyGameString?: CProductFirstThirdPartyGameString;
+  c_productGameDLC?: CProductGameDLC;
+  c_productGenreTagString?: CProductGenreTagString;
   c_productInternalNameString: string;
   c_productIsDownloadBoolean?: boolean;
   c_productKeywordsString?: string;
-  c_productMultiBool: boolean;
-  c_productOtherEditionsListString: string[];
-  c_productPreorderBonusAid?: string;
-  c_productPublisherString: string;
-  c_productRatingAdditionalText?: string;
-  c_productRatingString?: string;
+  c_productLauncherIDString?: string;
+  c_productLegalLinesHTML?: string;
+  c_productMDMBrandIDString?: string;
+  c_productMDMCustomerOfferIDString?: string;
+  c_productMDMDevelopmentIDString?: string;
+  c_productMDMIPCID?: string;
+  c_productMDMInstallmentIDString?: string;
+  c_productMultiBool?: boolean;
+  c_productOtherEditionsListString?: string[];
+  c_productOwnershipUplayGameID?: string;
+  c_productPlatformString?: CProductPlatformString;
+  c_productPromoMessageLink?: string;
+  c_productPromoMessageString?: string;
+  /**
+   * @diff region
+   */
+  c_productRatingString?: GameRatingType;
+  c_productReleaseDateString?: string;
+  c_productReleaseDateTime: Date;
+  c_productSKUString?: string;
+  c_productShortNameString?: string;
+  c_productSingleBool?: boolean;
+  c_productSubBrandString?: string;
+  c_productTaxGroupString?: CProductTaxGroupString;
+  c_productTaxTypeString?: string;
+  c_productTypeRefinementString?: CProductTypeRefinementString;
+  c_productTypeSelect: CProductTypeSelect;
+  c_productYoutubeIds?: string[];
+  c_walletEligibleToRewards?: boolean;
+  c_productDescriptionString?: string;
+  c_availableForInStorePickup?: boolean;
+  c_isNewtest?: boolean;
+  c_isSale?: boolean;
   c_productRatingText?: string;
-  c_productReleaseDateTime: string;
-  c_productShortNameString: string;
-  c_productSingleBool: boolean;
-  c_productSinglePlayerString?: string;
-  c_productSubBrandString: string;
-  c_productTypeCategoryRefinementString?: string;
-  c_productTypeRefinementString: string;
-  c_productTypeSelect: string;
-  c_productYoutubeIds: string[];
+  /**
+   * @diff region
+   */
+  c_enablePredictiveIntelligence?: boolean;
+  c_productGenreDisplayString?: string;
+  c_productPreorderOfferHTML?: string;
+  c_productSinglePlayerString?: CProductPlayerString;
+  c_productRatingReasonString?: string;
+  /**
+   * @diff region
+   */
+  page_description?: string;
+  page_keywords?: string;
+  c_forceUplayBox?: boolean;
+  c_freeOfferEndDateTime?: Date;
+  c_freeOfferProductLauncherId?: string;
+  c_freeOfferProductType?: CFreeOfferProductType;
+  c_freeOfferStartDateTime?: Date;
+  c_freeOfferUplayGameID?: string;
+  c_productLanguageString?: string;
+  c_productMultiPlayerString?: CProductPlayerString;
+  c_productTypeCategoryRefinementString?: CProductTypeCategoryRefinementString;
+  c_display_price?: string;
+  manufacturer_name?: string;
+  c_anywherePlatforms?: CAnywherePlatform[];
+  c_enableSecondaryCTA?: boolean;
+  c_openInNewTab?: boolean;
+  /**
+   * @diff region
+   */
+  c_productDeveloperString?: string;
+  c_productPublisherString?: string;
+  c_secondaryCTALink?: string;
+  c_secondaryCTAName?: string;
+  c_supportedAudio?: LanguageSupported[];
+  c_supportedInterfaces?: LanguageSupported[];
+  c_supportedSubtitles?: LanguageSupported[];
+  c_productSysReqMinHTML?: string;
+  c_productSysReqRecHTML?: string;
+  c_productAdHocOfferAid?: string;
+  c_productAdHocOfferEndDateTime?: Date;
+  c_productAdHocOfferStartDateTime?: Date;
+  c_productIntroString?: string;
+  c_productGameKeyFeaturesString?: string;
   c_productvideosfirst?: boolean;
+  c_legalLineNcsa?: string;
+  c_mediasSectionTitle?: string;
+  /**
+   * @diff region
+   */
   c_seoFooter?: string;
   c_summarySectionTitle?: string;
-  c_supportedAudio?: string[];
-  c_supportedInterfaces?: string[];
-  c_supportedSubtitles?: string[];
-  c_uplayPlusLegalLines?: string;
-  c_walletEligibleToRewards: boolean;
-  c_display_price: string;
-  c_productActivationString?: string;
-  c_productPlatformString?: string;
+  c_productPreorderBonusAid?: string;
+  /**
+   * @diff region
+   */
+  c_displayPrice?: string;
+  c_showZeroPrice?: boolean;
   c_contentSectionTitle?: string;
-  c_productActivationMethodString?: string;
-  c_productPreorderOfferHTML?: string;
-  c_anywherePlatforms?: string[];
+  /**
+   * @diff region
+   */
+  c_productCompareTableHTML?: string;
+  c_productYouTubeIdEnumList?: string[];
+  c_uplayPlusLegalLines?: string;
+  c_productDiscoverAssetList?: string[];
+  c_productReinsuranceSentencesList?: string[];
+  c_secondaryCTAOnlineFrom?: Date;
+  c_secondaryCTAOnlineTo?: Date;
+  valid_from?: ValidFrom;
+  c_compareSectionTitle?: string;
+  c_productContentHTMLPC?: string;
+  c_productMerchTypeString?: CProductMerchTypeString;
+  c_excludeFromFeed?: boolean;
+  c_productEditionContentString?: string;
+  c_productRatingReasonText?: string;
+  /**
+   * @diff currency, region
+   */
+  price_max?: number;
+  price_per_unit_max?: number;
+  c_additionalPlatforms?: string[];
+  c_productRatingAdditionalText?: string;
+  c_dlcTitle?: string;
+  c_openGraphHTML?: string;
+  c_openGraphHTMLTagAttribute?: string;
+  c_productRecommendedPcConfigString?: string;
+  c_productGenreString?: string;
+  /**
+   * @diff region
+   */
+  c_productContentHTML?: string;
+  c_requirementsSectionTitle?: string;
+  short_description?: string;
+  c_isNew?: boolean;
+  c_productRequireShipping?: boolean;
+  c_requireActivationNotification?: boolean;
+  ean?: string;
+  c_productTypeString?: CProductTypeString;
+  c_productPlatformInfoAid?: string;
+  c_GamingListproductLauncherIDStringPREMIUM?: string;
+  c_partOfGamingListPREMIUM?: string;
+  c_productPostLaunchOfferAid?: CProductPostLaunchOfferAid;
+  c_productFeatureHTML?: string;
+  c_productIsExclusiveBool?: boolean;
+  c_editionCompareAsset?: CEditionCompareAsset;
+  c_productMaxQtyInteger?: number;
+  c_productMaxQuantityInteger?: number;
+  c_productKeyFeatures2HTML?: string;
+  c_comingSoonProduct?: boolean;
+  c_productBannerYoutubeID?: string;
+  c_productKeyFeatures1HTML?: string;
+  c_discoverSectionTitle?: string;
+  c_productEditionTagString?: string;
+  c_productWeightInteger?: number;
+  valid_to?: ValidTo;
+  c_gameRating?: GameRatingType;
+  c_pdpSections?: string[];
+  c_freeOfferTitle?: string;
+  c_productReinsuranceGiftSentencesList?: string[];
+  c_uplayPlusBoxMention?: string;
+  c_freeOfferContent?: string;
+  c_smartDeliveryEnabled?: boolean;
+  c_hostedVideosImgPath?: string[];
+  c_hostedVideosPaths?: string[];
+  c_bonusesSectionTitle?: string;
+}
+
+export enum CAnywherePlatform {
+  Luna = 'luna',
+}
+
+export enum CDigitalItemNature {
+  Digital = 'Digital',
+}
+
+export enum CDlcType {
+  Currency = 'currency',
+  Extensions = 'extensions',
+  Seasonpass = 'seasonpass',
+  Skins = 'skins',
+}
+
+export enum CEditionCompareAsset {
+  PDPCompareACODWEB = 'pdp-compare-ACOD-WEB',
+  PDPCompareFC5WEB = 'pdp-compare-FC5-WEB',
+  PDPCompareSettlersWEB = 'pdp-compare-settlers-WEB',
+  PDPCompareTC2WEB = 'pdp-compare-TC2-WEB',
+}
+
+export enum CFreeOfferProductType {
+  Demo = 'demo',
+  FreeWeekends = 'free-weekends',
+  Freeplay = 'freeplay',
+  Giveaway = 'giveaway',
+}
+
+export enum GameRatingType {
+  AcbM = 'acb-m',
+  All = 'ALL',
+  CeroA = 'cero-a',
+  CeroB = 'cero-b',
+  CeroC = 'cero-c',
+  CeroD = 'cero-d',
+  CeroZ = 'cero-z',
+  Class0 = 'class-0',
+  Class12 = 'class-12',
+  Class15 = 'class-15',
+  Class18 = 'class-18',
+  Class6 = 'class-6',
+  EsrbE = 'esrb-e',
+  EsrbE10 = 'esrb-e10',
+  EsrbM = 'esrb-m',
+  EsrbRp = 'esrb-rp',
+  EsrbT = 'esrb-t',
+  Grac12 = 'grac-12',
+  IngNone = 'none',
+  IngOflcR18 = 'oflc-R18',
+  None = 'None',
+  NotRequired = 'not-required',
+  OflcG = 'oflc-g',
+  OflcM = 'oflc-m',
+  OflcMa15 = 'oflc-ma15',
+  OflcPG = 'oflc-pg',
+  OflcR18 = 'oflc-r18',
+  OlfcPG = 'olfc-pg',
+  Pegi12 = 'pegi-12',
+  Pegi16 = 'pegi-16',
+  Pegi18 = 'pegi-18',
+  Pegi3 = 'pegi-3',
+  Pegi7 = 'pegi-7',
+  The12 = '12+',
+  The15 = '15+',
+  The18 = '18+',
+  The3 = '3+',
+  Usk0 = 'usk-0',
+  Usk12 = 'usk-12',
+  Usk16 = 'usk-16',
+  Usk18 = 'usk-18',
+  Usk3 = 'usk-3',
+  Usk6 = 'usk-6',
+}
+
+export enum CProductActivationMethodString {
+  Currency = 'Currency',
+  Dlc = 'DLC',
+  Uplay = 'Uplay',
+}
+
+export enum CProductFirstThirdPartyGameString {
+  The1StParty = '1st Party',
+  Ubisoft = 'UBISOFT',
+}
+
+export enum CProductGameDLC {
+  Currency = 'Currency',
+  Dlc = 'DLC',
+  Game = 'Game',
+  게임 = '게임',
+  통화 = '통화',
+}
+
+export enum CProductGenreTagString {
+  Action = 'action',
+  ActionAdventure = 'action-adventure',
+  ActionCoopMulti = 'action-coop-multi',
+  ActionMulti = 'action-multi',
+  ActionMultiFight = 'action-multi-fight',
+  CProductGenreTagStringActionAdventure = 'Action/Adventure',
+  CProductGenreTagStringCasual = 'Casual',
+  CProductGenreTagStringStrategy = 'Strategy',
+  Casual = 'casual',
+  CityBuilderStrategy = 'City Builder, Strategy',
+  F2P = 'f2p',
+  FPS = 'fps',
+  FPSCoop = 'fps-coop',
+  FPSCoopMulti = 'fps-coop-multi',
+  FPSMulti = 'fps-multi',
+  FPSShooter = 'fps-shooter',
+  Family = 'family',
+  Fighting = 'fighting',
+  Horror = 'horror',
+  IndieActionAdventure = 'indie-action-adventure',
+  PurpleActionAdventure = 'Action / Adventure',
+  Puzzle = 'puzzle',
+  RPG = 'rpg',
+  Racing = 'racing',
+  Shooter = 'shooter',
+  ShooterCoOp = 'Shooter, Co-op',
+  ShooterFPSCoOp = 'Shooter, FPS, Co-op',
+  Simulation = 'simulation',
+  Simulator = 'simulator',
+  Sport = 'sport',
+  Strategy = 'strategy',
+}
+
+export enum CProductMerchTypeString {
+  VideoGames = 'Video Games',
+}
+
+export enum CProductPlayerString {
+  LowerSim = 'sim',
+  LowerYes = 'yes',
+  Ja = 'Ja',
+  Nee = 'Nee',
+  Neen = 'Neen',
+  Nein = 'Nein',
+  No = 'No',
+  Non = 'Non',
+  Não = 'Não',
+  OUI = 'Oui',
+  Si = 'Si',
+  Sim = 'Sim',
+  Sì = 'Sì',
+  Sí = 'Sí',
+  Y = 'y',
+  Yes = 'Yes',
+  はい = 'はい',
+  不 = '不',
+  是 = '是',
+  是的 = '是的',
+  没有 = '没有',
+  아니요 = '아니요',
+  예 = '예',
+}
+
+export enum CProductPlatformString {
+  PC = 'PC',
+  PCDL = 'pc-dl',
+  Pcdl = 'pcdl',
+  WindowsPC = 'Windows PC',
+}
+
+export enum CProductPostLaunchOfferAid {
+  DisclaimerOfflineDlc = 'disclaimer-offline-dlc',
+  DisclaimerOfflineFc3Dlc = 'disclaimer-offline-fc3-dlc',
+}
+
+export enum CProductTaxGroupString {
+  DigitalGoods = 'Digital Goods',
+  SoftwareDownloadableAndPhysical = 'Software (Downloadable and Physical)',
+}
+
+export enum CProductTypeCategoryRefinementString {
+  ActionAdventure = 'action-adventure',
+  DLCS = 'DLCs',
+  Dlc = 'DLC',
+  Game = 'Game',
+  Games = 'Games',
+}
+
+export enum CProductTypeRefinementString {
+  Collectible = 'collectible',
+  Dlc = 'dlc',
+  Games = 'games',
+  게임 = '게임',
+}
+
+export enum CProductTypeSelect {
+  Game = 'game',
+}
+
+export enum CProductTypeString {
+  Games = 'Games',
+  게임 = '게임',
+}
+
+export enum LanguageSupported {
+  Ar = 'ar',
+  CN = 'cn',
+  CNS = 'cn-s',
+  CNT = 'cn-t',
+  CS = 'cs',
+  De = 'de',
+  En = 'en',
+  Es = 'es',
+  EsLa = 'es-la',
+  Fr = 'fr',
+  Hu = 'hu',
+  It = 'it',
+  Jp = 'jp',
+  Ko = 'ko',
+  Nl = 'nl',
+  Pl = 'pl',
+  Pt = 'pt',
+  PtBr = 'pt-br',
+  Ro = 'ro',
+  Ru = 'ru',
+  Sv = 'sv',
+  Th = 'th',
+  Tr = 'tr',
 }
 
 export interface ImageGroup {
-  _type: string;
+  _type: 'image_group';
   images: Image[];
-  view_type: string;
+  view_type: ViewType;
 }
 
 export interface Image {
-  _type: ImageType;
+  _type: 'image';
   alt: string;
   dis_base_link: string;
   link: string;
   title: string;
 }
 
-export enum ImageType {
-  Image = 'image',
+export enum ViewType {
+  EditionPackshot = 'edition_packshot',
+  Large = 'large',
+  MediaSliderPD = 'media_slider_PD',
+  Medium = 'medium',
+  Pdpbanner = 'pdpbanner',
+  Small = 'small',
 }
 
 export interface Inventory {
-  _type: string;
+  _type: 'inventory';
   ats: number;
   backorderable: boolean;
-  id: string;
+  /**
+   * @diff region
+   */
+  id: InventoryID;
   orderable: boolean;
   preorderable: boolean;
   stock_level: number;
 }
 
+export enum InventoryID {
+  InventoryDemandwareASD = 'inventory_Demandware_ASD',
+  InventoryDemandwareArvato = 'inventory_Demandware_Arvato',
+  InventoryDemandwareCinram = 'inventory_Demandware_Cinram',
+  InventoryDemandwareTechnicolor = 'inventory_Demandware_Technicolor',
+}
+
 export interface Master {
-  _type: string;
+  _type: 'master';
+  /**
+   * @diff currency, region
+   */
   link: string;
   master_id: string;
   orderable: boolean;
-  price: number;
+  /**
+   * @diff currency
+   */
+  price?: number;
 }
 
 export interface ProductPromotion {
-  _type: ProductPromotionType;
+  _type: 'product_promotion';
+  /**
+   * @diff currency, region
+   */
   link: string;
+  promotional_price?: number;
   promotion_id: string;
 }
 
-export enum ProductPromotionType {
-  ProductPromotion = 'product_promotion',
-}
-
-export interface Type {
-  _type: string;
-  master: boolean;
+export interface ProductType {
+  _type: 'product_type';
+  variant?: boolean;
+  master?: boolean;
 }
 
 export interface ValidFrom {
-  default?: string;
-  'default@anz_uplaypc'?: string;
-  'default@at_uplaypc'?: string;
-  'default@cn_uplaypc'?: string;
-  'default@de_ubisoft'?: string;
-  'default@it_ubisoft'?: string;
-  'default@nl_ubisoft'?: string;
-  'default@us_ubisoft'?: string;
-  'default@ru_ubisoft'?: string;
-  'default@performance-tracker'?: string;
-  'default@ca_ubisoft'?: string;
-  'default@anz_ubisoft'?: string;
-  'default@at_ubisoft'?: string;
-  'default@cn_ubisoft'?: string;
-  'default@ie_ubisoft'?: string;
-  'default@tr_ubisoft'?: string;
-  'default@kr_ubisoft'?: string;
-  'default@uk_uplaypc'?: string;
-  'default@it_uplaypc'?: string;
-  'default@fr_ubisoft'?: string;
-  'default@fr_uplaypc'?: string;
-  'default@ie_uplaypc'?: string;
-  'default@jp_ubisoft'?: string;
-  'default@tr_uplaypc'?: string;
-  'default@sea_ubisoft'?: string;
-  'default@uk_ubisoft'?: string;
-  'default@eu_ubisoft'?: string;
-  'default@kr_uplaypc'?: string;
-  'default@ca_south_park'?: string;
-  'default@ru_uplaypc'?: string;
-  'default@jp_uplaypc'?: string;
-  'default@sea_uplaypc'?: string;
-  'default@ca_uplaypc'?: string;
-  'default@de_uplaypc'?: string;
-  'default@eu_uplaypc'?: string;
-  'default@us_south_park'?: string;
-  'default@es_uplaypc'?: string;
-  'default@br_ubisoft'?: string;
-  'default@br_uplaypc'?: string;
-  'default@nl_uplaypc'?: string;
-  'default@us_uplaypc'?: string;
-  'default@es_ubisoft'?: string;
+  'default@us_ubisoft'?: Date;
+  'default@cn_ubisoft'?: Date;
+  'default@cn_uplaypc'?: Date;
+  default?: Date;
+  'default@anz_uplaypc'?: Date;
+  'default@at_uplaypc'?: Date;
+  'default@de_ubisoft'?: Date;
+  'default@it_ubisoft'?: Date;
+  'default@nl_ubisoft'?: Date;
+  'default@ru_ubisoft'?: Date;
+  'default@anz_ubisoft'?: Date;
+  'default@at_ubisoft'?: Date;
+  'default@ie_ubisoft'?: Date;
+  'default@uk_uplaypc'?: Date;
+  'default@it_uplaypc'?: Date;
+  'default@fr_ubisoft'?: Date;
+  'default@fr_uplaypc'?: Date;
+  'default@ie_uplaypc'?: Date;
+  'default@jp_ubisoft'?: Date;
+  'default@sea_ubisoft'?: Date;
+  'default@uk_ubisoft'?: Date;
+  'default@eu_ubisoft'?: Date;
+  'default@ru_uplaypc'?: Date;
+  'default@jp_uplaypc'?: Date;
+  'default@sea_uplaypc'?: Date;
+  'default@de_uplaypc'?: Date;
+  'default@eu_uplaypc'?: Date;
+  'default@es_uplaypc'?: Date;
+  'default@nl_uplaypc'?: Date;
+  'default@es_ubisoft'?: Date;
+  'default@ca_ubisoft'?: Date;
+  'default@tr_ubisoft'?: Date;
+  'default@tr_uplaypc'?: Date;
+  'default@ca_uplaypc'?: Date;
+  'default@br_ubisoft'?: Date;
+  'default@br_uplaypc'?: Date;
+  'default@us_uplaypc'?: Date;
+  'default@kr_ubisoft'?: Date;
+  'default@kr_uplaypc'?: Date;
+  'default@us_south_park'?: Date;
+  'default@ca_south_park'?: Date;
+  'default@performance-tracker'?: Date;
+}
+
+export interface ValidTo {
+  'default@jp_ubisoft'?: Date;
+  'default@jp_uplaypc'?: Date;
+  'default@anz_ubisoft'?: Date;
+  'default@at_ubisoft'?: Date;
+  default?: Date;
+  'default@uk_ubisoft'?: Date;
+  'default@de_ubisoft'?: Date;
+  'default@it_ubisoft'?: Date;
+  'default@nl_ubisoft'?: Date;
+  'default@eu_ubisoft'?: Date;
+  'default@fr_ubisoft'?: Date;
+  'default@es_ubisoft'?: Date;
 }
 
 export interface Variant {
-  _type: VariantType;
+  _type: 'variant';
+  /**
+   * @diff currency, region
+   */
   link: string;
   orderable: boolean;
+  /**
+   * @diff currency, region
+   */
   price?: number;
   product_id: string;
-  variation_values: VariationValues;
-}
-
-export enum VariantType {
-  Variant = 'variant',
+  variation_values?: VariationValues;
 }
 
 export interface VariationValues {
-  Platform: string;
+  Platform: PlatformType;
+}
+
+export enum PlatformType {
+  Pcdl = 'pcdl',
+  Ps4 = 'ps4',
+  Ps5 = 'ps5',
+  Ps5Dig = 'ps5dig',
+  Switch = 'switch',
+  Switchdig = 'switchdig',
+  Xbox1 = 'xbox1',
+  Xboxdig = 'xboxdig',
+  Xboxx = 'xboxx',
 }
 
 export interface VariationAttribute {
-  _type: string;
-  id: string;
-  name: string;
-  values: Value[];
+  _type: 'variation_attribute';
+  id: NameEnum;
+  name: NameEnum;
+  values?: Value[];
+}
+
+export enum NameEnum {
+  Plataforma = 'Plataforma',
+  Platform = 'Platform',
+  Plattformen = 'Plattformen',
+  プラットフォーム = 'プラットフォーム',
+  平台 = '平台',
 }
 
 export interface Value {
-  _type: ValueType;
+  _type: 'variation_attribute_value';
   description: string;
   name: string;
   orderable: boolean;
-  value: string;
+  value: PlatformType;
 }
 
-export enum ValueType {
-  VariationAttributeValue = 'variation_attribute_value',
-}
-
-export interface ShopFaultResponse {
+export interface StoreFaultResponse {
   _v: string;
   fault: Fault;
 }
 
+export type FaultType =
+  | 'ClientAccessForbiddenException'
+  | 'InvalidExpandParameterException'
+  | 'MissingClientIdException'
+  | 'ProductNotFoundException'
+  | 'ProductNotFoundException'
+  | 'ResourcePathNotFoundException'
+  | 'SiteNotFoundException'
+  | 'SiteOfflineException'
+  | 'UnknownClientIdException'
+  | 'UnknownLocaleException'
+  | 'UnsupportedCurrencyException'
+  | 'UnsupportedLocaleException';
+
 export interface Fault {
-  arguments: Arguments;
+  arguments?: Arguments;
   type: string;
   message: string;
 }
 
 export interface Arguments {
-  locale: string;
+  [arg: string]: string | number | boolean;
 }
+
+export type StoreError = Error & Fault;

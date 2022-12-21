@@ -1,18 +1,19 @@
 /* eslint-disable class-methods-use-this */
 import phin from 'phin';
+import PQueue from 'p-queue';
 import * as shop from './shop-types';
 
 export interface ShopApiProps {
   origin?: string;
-  region?: shop.StoreRegion;
+  siteId?: shop.SiteID;
   version?: shop.StoreVersion;
-  currency?: shop.StoreCurrency;
+  currency?: shop.CurrencyCode;
   clientId?: string;
   locale?: shop.ShopLocale;
 }
 
 export interface ProductsProps extends ShopApiProps {
-  sections?: shop.DataSection[];
+  parameters?: shop.ProductParameter[];
 }
 
 export class ShopApi {
@@ -22,15 +23,17 @@ export class ShopApi {
 
   public version: shop.StoreVersion = 'v22_10';
 
-  public region: shop.StoreRegion = 'us_ubisoft';
+  public siteId: shop.SiteID = 'us_ubisoft';
 
-  public currency: shop.StoreCurrency = 'USD';
+  public currency?: shop.CurrencyCode = 'USD';
 
-  public locale: shop.ShopLocale = 'en-US';
+  public locale?: shop.ShopLocale = 'en-US';
 
   public clientId = '2a3b13e8-a80b-4795-853a-4cd52645919b';
 
-  public sections: shop.DataSection[] = [
+  public limiter: PQueue = new PQueue({ concurrency: 100, interval: 0 });
+
+  public parameters: shop.ProductParameter[] = [
     'images',
     'variations',
     'prices',
@@ -39,12 +42,14 @@ export class ShopApi {
   ];
 
   constructor(props?: ShopApiProps) {
-    this.origin = props?.origin ?? this.origin;
-    this.version = props?.version ?? this.version;
-    this.region = props?.region ?? this.region;
-    this.currency = props?.currency ?? this.currency;
-    this.clientId = props?.clientId ?? this.clientId;
-    this.locale = props?.locale ?? this.locale;
+    if (!props) return;
+    this.origin = props.origin ?? this.origin;
+    this.version = props.version ?? this.version;
+    this.siteId = props.siteId ?? this.siteId;
+    this.clientId = props.clientId ?? this.clientId;
+    // Allow these props to be undefined
+    if ('currency' in props) this.currency = props.currency;
+    if ('locale' in props) this.locale = props.locale;
   }
 
   /**
@@ -56,7 +61,7 @@ export class ShopApi {
   public async getProducts(
     productIds: string[],
     overrides?: ProductsProps
-  ): Promise<shop.ProductsResponseBody> {
+  ): Promise<shop.ShopProductPage> {
     /**
      * For earlier versions like v19_8, there is a recommended limit of 40, with a hard limit higher due to response body size limits
      * For latest versions like v22_10, the API caps the limit to 24
@@ -69,17 +74,19 @@ export class ShopApi {
       );
     }
     const productUrl = new URL(
-      `${overrides?.origin || this.origin}/s/${overrides?.region || this.region}/dw/shop/${
+      `${overrides?.origin || this.origin}/s/${overrides?.siteId || this.siteId}/dw/shop/${
         overrides?.version || this.version
       }/products/(${productIds.join(',')})`
     );
     this.applySearchParams(productUrl, overrides);
 
-    const resp = await phin<shop.ProductsResponseBody>({
-      method: 'GET',
-      url: productUrl,
-      parse: 'json',
-    });
+    const resp = await this.limiter.add(() =>
+      phin<shop.ShopProductPage>({
+        method: 'GET',
+        url: productUrl,
+        parse: 'json',
+      })
+    );
 
     this.handleError(resp);
 
@@ -94,17 +101,19 @@ export class ShopApi {
    */
   public async getProduct(productId: string, overrides?: ProductsProps): Promise<shop.Product> {
     const productUrl = new URL(
-      `${overrides?.origin || this.origin}/s/${overrides?.region || this.region}/dw/shop/${
+      `${overrides?.origin || this.origin}/s/${overrides?.siteId || this.siteId}/dw/shop/${
         overrides?.version || this.version
       }/products/${productId}`
     );
     this.applySearchParams(productUrl, overrides);
 
-    const resp = await phin<shop.Product>({
-      method: 'GET',
-      url: productUrl,
-      parse: 'json',
-    });
+    const resp = await this.limiter.add(() =>
+      phin<shop.Product>({
+        method: 'GET',
+        url: productUrl,
+        parse: 'json',
+      })
+    );
 
     this.handleError(resp);
 
@@ -112,29 +121,49 @@ export class ShopApi {
   }
 
   private applySearchParams(url: URL, overrides?: ProductsProps): URL {
-    url.searchParams.append('expand', (overrides?.sections || this.sections).join(','));
-    url.searchParams.append('currency', overrides?.currency || this.currency);
+    url.searchParams.append('expand', (overrides?.parameters || this.parameters).join(','));
     url.searchParams.append('client_id', overrides?.clientId || this.clientId);
-    url.searchParams.append('locale', overrides?.locale || this.locale);
+    // Allow these props to be unset
+    const currencyParam =
+      overrides && 'currency' in overrides ? overrides?.currency : this.currency;
+    if (currencyParam) {
+      url.searchParams.append('currency', currencyParam);
+    }
+    const localeParam = overrides && 'locale' in overrides ? overrides?.locale : this.locale;
+    if (localeParam) {
+      url.searchParams.append('locale', localeParam);
+    }
     return url;
   }
 
   private handleError(resp: phin.IJSONResponse<unknown>): void {
-    if (resp.statusCode === 400) {
-      const body = resp.body as shop.ShopFaultResponse;
-      const err = new Error();
-      Object.assign(err, body.fault);
-      throw err;
+    if (resp.statusCode === 200) return;
+    const err = new Error(`Request responded with status code ${resp.statusCode}`);
+    const body = resp.body as shop.StoreFaultResponse;
+    if (body) {
+      if (resp.statusCode && resp.statusCode >= 400 && resp.statusCode <= 404) {
+        Object.assign(err, body.fault);
+      } else {
+        Object.assign(err, body);
+      }
     }
+    throw err;
   }
 
-  public getCountriesByCurrency(currency: shop.StoreCurrency): shop.CountryCode[] {
+  public static getCountriesByCurrency(currency: shop.CurrencyCode): shop.CountryCode[] {
     return shop.currencyCountryMap[currency];
   }
 
-  public getCurrenciesByCountry(country: shop.CountryCode): shop.StoreCurrency[] {
+  public static getCurrenciesByCountry(country: shop.CountryCode): shop.CurrencyCode[] {
     return Object.entries(shop.currencyCountryMap)
       .filter(([, countries]) => countries.includes(country))
-      .map(([currency]) => currency as shop.StoreCurrency);
+      .map(([currency]) => currency as shop.CurrencyCode);
+  }
+
+  public static getCurrenciesBySiteId(siteId: shop.SiteID): shop.CurrencyCode[] {
+    if (siteId === 'performance-tracker') return ['EUR'];
+    const countryCode = siteId.split('_')[0] as shop.CountryCode;
+    if (!countryCode) return [];
+    return ShopApi.getCurrenciesByCountry(countryCode);
   }
 }
