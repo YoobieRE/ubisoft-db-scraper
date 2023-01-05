@@ -12,7 +12,8 @@
     "docker:run": "docker run --rm -v $(pwd)/config:/config ubisoft-db-scraper",
     "gen-configuration": "npx ts-node scripts/generate-configuration-types.ts",
     "gen-store-configuration": "ts-node scripts/generate-store-configuration-types.ts",
-    "gen-shop-product": "ts-node scripts/generate-shop-product-types.ts"
+    "gen-shop-product": "ts-node scripts/generate-shop-product-types.ts",
+    "gen-algolia-product": "ts-node scripts/generate-algolia-product-types.ts"
   },
   "author": {
     "name": "Charlie Laabs",
@@ -45,6 +46,7 @@
     "@discordjs/builders": "^1.1.0",
     "@discordjs/rest": "^1.1.0",
     "@isaacs/ttlcache": "^1.2.0",
+    "algoliasearch": "^4.14.3",
     "debug": "^4.3.4",
     "discord-api-types": "^0.37.8",
     "discord.js": "^14.3.0",

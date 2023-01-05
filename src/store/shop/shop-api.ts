@@ -31,7 +31,7 @@ export class ShopApi {
 
   public clientId = '2a3b13e8-a80b-4795-853a-4cd52645919b';
 
-  public limiter: PQueue = new PQueue({ concurrency: 100, interval: 0 });
+  public limiter: PQueue = new PQueue({ concurrency: 10, interval: 0 });
 
   public parameters: shop.ProductParameter[] = [
     'images',
@@ -61,7 +61,7 @@ export class ShopApi {
   public async getProducts(
     productIds: string[],
     overrides?: ProductsProps
-  ): Promise<shop.ShopProductPage> {
+  ): Promise<shop.ProductResult> {
     /**
      * For earlier versions like v19_8, there is a recommended limit of 40, with a hard limit higher due to response body size limits
      * For latest versions like v22_10, the API caps the limit to 24
@@ -81,16 +81,17 @@ export class ShopApi {
     this.applySearchParams(productUrl, overrides);
 
     const resp = await this.limiter.add(() =>
-      phin<shop.ShopProductPage>({
+      phin({
         method: 'GET',
         url: productUrl,
-        parse: 'json',
       })
     );
 
-    this.handleError(resp);
+    const body = this.parseResponse<shop.ProductResult>(resp);
 
-    return resp.body;
+    this.handleError(resp, body);
+
+    return body;
   }
 
   /**
@@ -108,16 +109,17 @@ export class ShopApi {
     this.applySearchParams(productUrl, overrides);
 
     const resp = await this.limiter.add(() =>
-      phin<shop.Product>({
+      phin({
         method: 'GET',
         url: productUrl,
-        parse: 'json',
       })
     );
 
-    this.handleError(resp);
+    const body = this.parseResponse<shop.Product>(resp);
 
-    return resp.body;
+    this.handleError(resp, body);
+
+    return body;
   }
 
   private applySearchParams(url: URL, overrides?: ProductsProps): URL {
@@ -136,10 +138,22 @@ export class ShopApi {
     return url;
   }
 
-  private handleError(resp: phin.IJSONResponse<unknown>): void {
+  private parseResponse<T>(resp: phin.IResponse): T {
+    const bodyString = resp.body.toString();
+    let body: T;
+    try {
+      body = JSON.parse(bodyString);
+    } catch (err) {
+      if (bodyString) throw new Error(`${resp.statusCode}: ${bodyString}`);
+      throw err;
+    }
+    return body;
+  }
+
+  private handleError(resp: phin.IResponse, jsonBody: unknown): void {
     if (resp.statusCode === 200) return;
     const err = new Error(`Request responded with status code ${resp.statusCode}`);
-    const body = resp.body as shop.StoreFaultResponse;
+    const body = jsonBody as shop.StoreFaultResponse;
     if (body) {
       if (resp.statusCode && resp.statusCode >= 400 && resp.statusCode <= 404) {
         Object.assign(err, body.fault);

@@ -718,13 +718,12 @@ export type StoreVersion =
   | 'v22_10'
   | string;
 
-export interface ShopProductPage {
-  _id: string;
-  siteId: SiteID;
-  product: Product;
-  createdAt: Date;
-  updatedAt: Date;
-  __v: number;
+export interface ProductResult {
+  _v: StoreVersion;
+  _type: 'product_result';
+  count: number;
+  data?: Product[];
+  total: number;
 }
 
 export interface Product {

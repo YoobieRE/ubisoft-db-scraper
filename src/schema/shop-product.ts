@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import * as shop from '../store/shop-types';
+import * as shop from '../store/shop/shop-types';
 
 export interface IShopProduct {
   siteId: shop.SiteID;
@@ -12,6 +12,9 @@ const shopProductSchema = new mongoose.Schema<shop.Product>(
   {
     id: { type: String, required: true, index: true },
     currency: { type: String, required: true, index: true },
+    c_productLauncherIDString: { type: String, required: false, index: true },
+    c_productOwnershipUplayGameID: { type: String, required: false, index: true },
+    // TODO: index product ID fields
   },
   {
     strict: false,
@@ -20,7 +23,7 @@ const shopProductSchema = new mongoose.Schema<shop.Product>(
 
 export const shopProductParentSchema = new mongoose.Schema<IShopProduct>(
   {
-    siteId: { type: String, required: true },
+    siteId: { type: String, required: true, index: true },
     product: shopProductSchema,
   },
   {
@@ -30,3 +33,8 @@ export const shopProductParentSchema = new mongoose.Schema<IShopProduct>(
 );
 
 export const ShopProduct = mongoose.model<IShopProduct>('ShopProduct', shopProductParentSchema);
+
+export type ShopProductDocument = mongoose.Document<unknown, unknown, IShopProduct> &
+  IShopProduct & {
+    _id: mongoose.Types.ObjectId;
+  };

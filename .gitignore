@@ -2,6 +2,7 @@
 test-output
 config
 db
+algolia-dumps
 
 # Logs
 logs
