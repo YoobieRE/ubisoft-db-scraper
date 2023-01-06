@@ -12,14 +12,17 @@ const shopProductSchema = new mongoose.Schema<shop.Product>(
   {
     id: { type: String, required: true, index: true },
     currency: { type: String, required: true, index: true },
-    c_productLauncherIDString: { type: String, required: false, index: true },
-    c_productOwnershipUplayGameID: { type: String, required: false, index: true },
-    // TODO: index product ID fields
   },
   {
     strict: false,
   }
 );
+shopProductSchema.index({ c_productLauncherIDString: 1 });
+shopProductSchema.index({ c_productOwnershipUplayGameID: 1 });
+shopProductSchema.index({ c_productDlcBaseString: 1 });
+shopProductSchema.index({ c_productOtherEditionsListString: 1 });
+shopProductSchema.index({ 'master.master_id': 1 });
+shopProductSchema.index({ 'variants.product_id': 1 });
 
 export const shopProductParentSchema = new mongoose.Schema<IShopProduct>(
   {

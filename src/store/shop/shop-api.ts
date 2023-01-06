@@ -33,6 +33,8 @@ export class ShopApi {
 
   public limiter: PQueue = new PQueue({ concurrency: 10, interval: 0 });
 
+  private timeout = 5000;
+
   public parameters: shop.ProductParameter[] = [
     'images',
     'variations',
@@ -84,6 +86,7 @@ export class ShopApi {
       phin({
         method: 'GET',
         url: productUrl,
+        timeout: this.timeout,
       })
     );
 
@@ -112,6 +115,7 @@ export class ShopApi {
       phin({
         method: 'GET',
         url: productUrl,
+        timeout: this.timeout,
       })
     );
 

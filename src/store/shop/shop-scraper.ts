@@ -44,7 +44,7 @@ export class ShopProductScraper extends (EventEmitter as new () => TypedEmitter<
 
   private L: Logger;
 
-  private limiter: PQueue = new PQueue({ concurrency: 1, interval: 0 });
+  private limiter: PQueue = new PQueue({ concurrency: 2, interval: 0 });
 
   constructor(props: ShopProductScraperProps) {
     super();
