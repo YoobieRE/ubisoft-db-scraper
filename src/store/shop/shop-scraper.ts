@@ -27,6 +27,16 @@ export interface ShopProductScraperProps {
   logger: Logger;
 }
 
+export interface ShopProductScrapeResult {
+  updatedIds: Set<string>;
+  newIds: Set<string>;
+}
+
+export interface FetchAndUpdateProductsResult {
+  updatedIds: Set<string>;
+  relatedIds: Set<string>;
+}
+
 export interface ShopProductDbChangeSet {
   product: ShopProductDocument;
   revision?: ShopProductDocument;
@@ -51,19 +61,52 @@ export class ShopProductScraper extends (EventEmitter as new () => TypedEmitter<
     this.L = props.logger;
   }
 
-  public async scrape(productIds: Set<string>): Promise<Set<string>> {
+  public async scrape(productIds: Set<string>): Promise<ShopProductScrapeResult> {
     const idChunks = chunkArray(Array.from(productIds), this.chunkSize);
-    const updatedIds = await Promise.all(
+    const knownIds = await this.getAllIds();
+    const fetchUpdateResults = await Promise.all(
       idChunks.map((idChunk) => this.limiter.add(() => this.fetchAndUpdateProducts(idChunk)))
     );
-    const updatedIdsSet = new Set<string>();
-    updatedIds.flat().forEach((id) => {
-      updatedIdsSet.add(id);
+    const updatedIds = new Set<string>();
+    const newIds = new Set<string>();
+    fetchUpdateResults.flat().forEach((res) => {
+      if (res.updatedIds) res.updatedIds.forEach((id) => updatedIds.add(id));
+      if (res.relatedIds)
+        res.relatedIds.forEach((id) => {
+          if (!knownIds.has(id)) newIds.add(id);
+        });
     });
-    return updatedIdsSet;
+    this.L.info(
+      { updatedIdsCount: updatedIds.size, newIdsCount: newIds.size },
+      'Shop product scraping results'
+    );
+    return { updatedIds, newIds };
   }
 
-  private async fetchAndUpdateProducts(idChunk: string[]): Promise<string[]> {
+  private async getAllIds(): Promise<Set<string>> {
+    const shopDocs = await ShopProduct.find(
+      {},
+      {
+        product: {
+          id: 1,
+          c_productDlcBaseString: 1,
+          'master.master_id': 1,
+          c_productOtherEditionsListString: 1,
+          'variants.product_id': 1,
+        },
+      }
+    );
+
+    const ids = new Set<string>();
+    const products = shopDocs.map((d) => d.product);
+    this.addProductIdsToSet(products, ids, ids);
+    this.L.debug({ idCount: ids.size }, 'Counted unique IDs in store product DB');
+    return ids;
+  }
+
+  private async fetchAndUpdateProducts(
+    idChunk: string[]
+  ): Promise<Partial<FetchAndUpdateProductsResult>> {
     try {
       this.L.debug({ chunksRemaining: this.limiter.size }, 'Processing store pages for chunk');
       const currentChunkCache = await this.populateCurrentProductCache(idChunk);
@@ -82,11 +125,16 @@ export class ShopProductScraper extends (EventEmitter as new () => TypedEmitter<
         ShopProduct.insertMany(newProducts),
         ShopProductRevision.insertMany(newRevisions),
       ]);
-      const updatedProductIds = chunkChangeSets.map((c) => c.product.product.id);
-      return updatedProductIds;
+      const result: FetchAndUpdateProductsResult = {
+        updatedIds: new Set<string>(),
+        relatedIds: new Set<string>(),
+      };
+      const changeSetProducts = chunkChangeSets.map((c) => c.product.product);
+      this.addProductIdsToSet(changeSetProducts, result.updatedIds, result.relatedIds);
+      return result;
     } catch (err) {
       this.L.error(err);
-      return [];
+      return {};
     }
   }
 
@@ -210,5 +258,28 @@ export class ShopProductScraper extends (EventEmitter as new () => TypedEmitter<
       this.L.error({ siteId, id: product.id, err });
       return null;
     }
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  private addProductIdsToSet(
+    products: shop.Product[],
+    primaryIds: Set<string>,
+    relatedIds: Set<string>
+  ): void {
+    products.forEach((product) => {
+      if (product.id) primaryIds.add(product.id);
+      if (product.c_productDlcBaseString) relatedIds.add(product.c_productDlcBaseString);
+      if (product.master.master_id) relatedIds.add(product.master.master_id);
+      if (product.c_productOtherEditionsListString) {
+        product.c_productOtherEditionsListString.forEach((id) => {
+          relatedIds.add(id);
+        });
+      }
+      if (product.variants) {
+        product.variants.forEach((variant) => {
+          relatedIds.add(variant.product_id);
+        });
+      }
+    });
   }
 }
