@@ -107,7 +107,7 @@ async function main(): Promise<void> {
   } else {
     logger.info('Started, scheduling scraping jobs');
     schedule.scheduleJob('1 * * * *', () => scrape('store'));
-    schedule.scheduleJob('0 0 * * *', () => scrape('config'));
+    // schedule.scheduleJob('0 0 * * *', () => scrape('config'));
   }
 }
 
