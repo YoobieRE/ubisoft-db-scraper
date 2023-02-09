@@ -43,34 +43,51 @@ export default class DemuxPool {
   public async getDemuxPool(): Promise<DemuxUnit[]> {
     if (this.demuxPool) return this.demuxPool;
 
+    const setupLimiter = new PQueue({
+      concurrency: 1,
+      interval: 200,
+      intervalCap: 1,
+    });
+
     this.demuxPool = await Promise.all(
-      this.accounts.map(async ({ email, password, totp }) => {
-        const ticketManager = new UbiTicketManager({
-          account: { email, password, totp },
-          logger: this.L,
-        });
+      this.accounts.map(({ email, password, totp }) =>
+        setupLimiter.add(async () => {
+          try {
+            const ticketManager = new UbiTicketManager({
+              account: { email, password, totp },
+              logger: this.L,
+            });
 
-        const demux = new UbisoftDemux({ timeout: 1000 });
-        this.L.debug({ email }, 'Authenticating with Demux');
+            const demux = new UbisoftDemux({ timeout: 1000 });
+            this.L.debug({ email }, 'Authenticating with Demux');
 
-        const authResponse = await demux.basicRequest({
-          authenticateReq: {
-            clientId: 'uplay_pc',
-            sendKeepAlive: false,
-            token: {
-              ubiTicket: await ticketManager.getTicket(),
-            },
-          },
-        });
+            const authResponse = await demux.basicRequest({
+              authenticateReq: {
+                clientId: 'uplay_pc',
+                sendKeepAlive: false,
+                token: {
+                  ubiTicket: await ticketManager.getTicket(),
+                },
+              },
+            });
 
-        if (!authResponse.authenticateRsp?.success) throw new Error('Not able to authenticate');
-        this.L.info({ email }, 'Successfully logged in and authenticated');
-        const limiter = new PQueue({ concurrency: 1, interval: this.throttleTime, intervalCap: 1 });
-        return {
-          demux,
-          limiter,
-        };
-      })
+            if (!authResponse.authenticateRsp?.success) throw new Error('Not able to authenticate');
+            this.L.info({ email }, 'Successfully logged in and authenticated');
+            const limiter = new PQueue({
+              concurrency: 1,
+              interval: this.throttleTime,
+              intervalCap: 1,
+            });
+            return {
+              demux,
+              limiter,
+            };
+          } catch (err) {
+            err.email = email;
+            throw err;
+          }
+        })
+      )
     );
     return this.demuxPool;
   }
