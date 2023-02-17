@@ -86,9 +86,9 @@ export default class DiscordReporter {
       maxElisions: 1,
     } as DiffStringOptions); // TODO: waiting on: https://github.com/DefinitelyTyped/DefinitelyTyped/pull/62173
 
-    if (changes.length > 1024 - 7) changes = changes.substring(0, 1024 - 7);
+    if (changes.length > 1024 - 11) changes = changes.substring(0, 1024 - 11);
 
-    changes = `\`\`\`\n${changes}\`\`\``;
+    changes = `\`\`\`diff\n${changes}\`\`\``;
 
     const isNew = cleanOldProduct === undefined;
     const description = isNew
