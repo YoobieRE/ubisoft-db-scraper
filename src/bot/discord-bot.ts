@@ -66,7 +66,7 @@ export class DiscordBot {
 
   private L: Logger;
 
-  private client: Discord.Client<true>;
+  public client: Discord.Client<true>;
 
   private ticketManager: UbiTicketManager;
 
