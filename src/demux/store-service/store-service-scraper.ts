@@ -9,7 +9,7 @@ import {
   IExpandedStoreProduct,
   IStoreTypeProductMap,
   Product,
-  ProductDocument,
+  ProductLeanDocument,
 } from '../../schema/product';
 import { chunkArray } from '../../common/util';
 
@@ -77,9 +77,9 @@ export class StoreServiceScraper extends (EventEmitter as new () => TypedEmitter
         ]);
         const currentProducts = await Product.find({
           _id: { $in: productIdsChunk },
-        });
+        }).lean();
         this.L.debug(`Received ${currentProducts.length} current products`);
-        const currentProductsMap = new Map<number, ProductDocument>();
+        const currentProductsMap = new Map<number, ProductLeanDocument>();
         currentProducts.forEach((currentProduct) => {
           currentProductsMap.set(currentProduct._id, currentProduct);
         });
@@ -99,7 +99,7 @@ export class StoreServiceScraper extends (EventEmitter as new () => TypedEmitter
           const storeProductMap = Object.keys(storeProductMapCreation).length
             ? storeProductMapCreation
             : undefined;
-          const currentStoreProduct = currentProduct?.toObject().storeProduct;
+          const currentStoreProduct = currentProduct?.storeProduct;
 
           // Detect changes
           if (

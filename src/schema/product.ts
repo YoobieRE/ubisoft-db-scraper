@@ -40,3 +40,4 @@ export const productSchema = new mongoose.Schema<IProduct>(
 export const Product = mongoose.model<IProduct>('Product', productSchema);
 
 export type ProductDocument = mongoose.Document<unknown, unknown, IProduct> & IProduct;
+export type ProductLeanDocument = mongoose.Require_id<mongoose.LeanDocument<IProduct>>;

@@ -31,14 +31,18 @@ export interface DiscordReporterProps {
 
 const MAX_TOTAL_MESSAGE_LENGTH = 1024;
 
-function documentCleaner<T>(document: mongoose.Document<unknown, unknown, T> & T): T {
-  const docObject = document.toObject();
+function leanDocumentCleaner<T>(leanDocument: mongoose.Require_id<mongoose.LeanDocument<T>>): T {
   const cleanDoc = Object.fromEntries(
-    Object.entries(docObject).filter(
+    Object.entries(leanDocument).filter(
       ([key]) => !key.startsWith('_') && !['createdAt', 'updatedAt'].includes(key)
     )
   ) as unknown as T;
   return cleanDoc;
+}
+
+function documentCleaner<T>(document: mongoose.Document<unknown, unknown, T> & T): T {
+  const docObject = document.toObject();
+  return leanDocumentCleaner(docObject);
 }
 
 function trimCodeBlock(code: string): string {
@@ -90,8 +94,11 @@ export default class DiscordReporter {
 
     // If the change is only a switch in storePartner, just skip it
     const changesObj = diff(cleanOldProduct, cleanNewProduct);
-    const pastVersions = await ProductRevision.find({ productId }).sort({ _id: -1 }).limit(3); // Ordering by _id since timestamps were broken previously
-    const cleanPastVersions = pastVersions.map((d) => documentCleaner<ProductDocument>(d));
+    const pastVersions = await ProductRevision.find({ productId })
+      .sort({ _id: -1 }) // Ordering by _id since timestamps were broken previously
+      .limit(3)
+      .lean();
+    const cleanPastVersions = pastVersions.map((d) => leanDocumentCleaner(d));
     if (
       deepEqual(cleanNewProduct, cleanPastVersions[1]) &&
       deepEqual(cleanPastVersions[0], cleanPastVersions[2])
@@ -156,8 +163,11 @@ export default class DiscordReporter {
 
     // If the change is only a switch in storePartner, just skip it
     const changesObj = diff(newProduct, oldProduct);
-    const pastVersions = await ProductRevision.find({ productId }).sort({ _id: -1 }).limit(3); // Ordering by _id since timestamps were broken previously
-    const cleanPastVersions = pastVersions.map((d) => documentCleaner<ProductDocument>(d));
+    const pastVersions = await ProductRevision.find({ productId })
+      .sort({ _id: -1 }) // Ordering by _id since timestamps were broken previously
+      .limit(3)
+      .lean();
+    const cleanPastVersions = pastVersions.map((d) => leanDocumentCleaner<ProductDocument>(d));
     if (
       deepEqual(newProduct, cleanPastVersions[1].storeProduct) &&
       deepEqual(cleanPastVersions[0].storeProduct, cleanPastVersions[2].storeProduct)
@@ -290,7 +300,7 @@ export default class DiscordReporter {
         { 'storeProduct.ingame.associations': productId },
         { 'storeProduct.ingame.ownershipAssociations': productId },
       ],
-    });
+    }).lean();
     this.L.debug(
       { associateProductsCount: associateProducts.length, productId },
       'Got list of associate products'
@@ -301,8 +311,9 @@ export default class DiscordReporter {
 
   private async getBestProductName(productId: number): Promise<ProductNameResult> {
     const latestConfigVersions = await ProductRevision.find({ productId })
-      .sort({ _id: -1 })
-      .limit(2); // Ordering by _id since timestamps were broken previously
+      .sort({ _id: -1 }) // Ordering by _id since timestamps were broken previously
+      .limit(2)
+      .lean();
     let bestName: ProductNameResult = {};
     latestConfigVersions.some((rev) => {
       const revName = this.getBestConfigProductName(rev);
