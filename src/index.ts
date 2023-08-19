@@ -15,7 +15,7 @@ import StoreListener from './demux/store-listener';
 logger.debug({ config }, 'Found config');
 
 const discordReporter = new DiscordReporter({
-  channelWebhooks: config.discordWebhooks,
+  updateChannels: config.discordWebhooks,
   logger,
   disabled: config.webhookDisabled,
 });
@@ -44,9 +44,8 @@ async function scrape(target: 'config' | 'store'): Promise<void> {
     });
 
     try {
-      const connectionPool = await demuxPool.getConnectionPool();
       const dbScraper = new DbScraper({
-        connectionPool,
+        demuxPool,
         logger,
         maxProductId: config.maxProductId,
         productIdChunkSize: config.productIdChunkSize,
@@ -93,8 +92,8 @@ async function main(): Promise<void> {
     await storeListener.listenForUpdates();
   }
 
-  if (config.discordBotToken) {
-    DiscordBot.build({
+  if (config.discordBotToken && config.discordBotAccount) {
+    await DiscordBot.build({
       botToken: config.discordBotToken,
       ubiAccount: config.discordBotAccount,
       testGuildId: config.discordTestGuild,

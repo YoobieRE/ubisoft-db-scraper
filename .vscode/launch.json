@@ -33,5 +33,33 @@
             "outputCapture": "std",
             "console": "integratedTerminal"
         },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Debug store",
+            "runtimeArgs": [
+                "-r",
+                "ts-node/register"
+            ],
+            "args": [
+                "${workspaceFolder}/src/store/shop/sandbox.ts"
+            ],
+            "outputCapture": "std",
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Debug algolia",
+            "runtimeArgs": [
+                "-r",
+                "ts-node/register"
+            ],
+            "args": [
+                "${workspaceFolder}/src/store/algolia/sandbox.ts"
+            ],
+            "outputCapture": "std",
+            "console": "integratedTerminal"
+        },
     ]
 }

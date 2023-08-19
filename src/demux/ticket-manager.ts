@@ -74,6 +74,7 @@ export class UbiTicketManager {
         expiration = (loginResp as CreateSessionSuccessResponse).expiration;
       }
     }
+    if (!ticket) throw new Error('Did not receive login ticket');
     // Cache rememberMeTicket
     if (rememberMeTicket) await writeRememberMeTicket(rememberMeTicket, email);
     this.ticketExpiration = new Date(expiration);

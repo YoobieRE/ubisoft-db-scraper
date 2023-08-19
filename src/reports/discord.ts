@@ -17,6 +17,7 @@ import {
 import { ProductRevision } from '../schema/product-revision';
 import { DiscordBot } from '../bot/discord-bot';
 import { DiscordUpdateChannelList } from '../common/config';
+import { IShopProduct } from '../schema/shop-product';
 
 export interface ProductNameResult {
   altNames?: string[];
@@ -234,6 +235,13 @@ export default class DiscordReporter {
     const channelId = this.updateChannels.storeService || this.updateChannels.default;
 
     await this.sendDiscordMessage(channelId, embed);
+  }
+
+  public async sendShopProductUpdate(
+    newProduct: IShopProduct,
+    oldProduct?: IShopProduct
+  ): Promise<void> {
+    if (this.disabled) return;
   }
 
   public async sendLauncherUpdate(newVersion: LauncherVersionDocument): Promise<void> {
